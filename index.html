@@ -102,14 +102,12 @@
         entries.push({ id: doc.id, ...d });
       });
 
-      // تجميع حسب driverId + تاريخ اليوم (مثلاً بصيغة yyyy-mm-dd)
+      // تجميع حسب driverId + تاريخ اليوم (YYYY-MM-DD)
       const grouped = {};
 
       entries.forEach(d => {
-        // نحصل على تاريخ فقط بدون وقت
         const dateObj = d.timestamp?.toDate();
         if (!dateObj) return;
-
         const dateStr = dateObj.toISOString().split("T")[0]; // YYYY-MM-DD
         const key = `${d.driverId}_${dateStr}`;
 
@@ -117,10 +115,15 @@
           grouped[key] = {
             driverId: d.driverId,
             dateStr,
-            items: []
+            itemsMap: {}
           };
         }
-        grouped[key].items.push({ item: d.item, serial: d.serial });
+
+        if (grouped[key].itemsMap[d.item]) {
+          grouped[key].itemsMap[d.item] += ", " + d.serial;
+        } else {
+          grouped[key].itemsMap[d.item] = d.serial;
+        }
       });
 
       let html = "";
@@ -130,13 +133,17 @@
         html += `<div class="entry-box">
           <b>التاريخ:</b> ${group.dateStr} <br>
           <b>السائق:</b> ${group.driverId || "بصورة فقط"} <br>
-          <b>الأصناف:</b><br>`;
+          <b>الأصناف:</b><br><ul>`;
 
-        group.items.forEach(it => {
-          html += `- ${it.item} — السيريال: ${it.serial.split(",").map(s => `&lt;${s.trim()}&gt;`).join(" ")}<br>`;
-        });
+        for (const itemName in group.itemsMap) {
+          const serialsFormatted = group.itemsMap[itemName]
+            .split(",")
+            .map(s => `&lt;${s.trim()}&gt;`)
+            .join(" ");
+          html += `<li>${itemName} — السيريال: ${serialsFormatted}</li>`;
+        }
 
-        html += `</div><br>`;
+        html += `</ul></div><br>`;
       }
 
       entryList.innerHTML = html || "لا توجد بيانات بعد.";
@@ -157,6 +164,7 @@
       margin-bottom: 15px;
     }
     .tag { display: inline-block; background: #d0eaff; padding: 5px 10px; margin: 3px; border-radius: 6px; color: #0073aa; font-weight: bold; }
+    ul { padding-inline-start: 20px; }
   </style>
 </head>
 <body>
