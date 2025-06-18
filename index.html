@@ -7,24 +7,30 @@
 <style>
   body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f9f9f9; }
   label, select, input, button { display: block; width: 100%; margin-bottom: 10px; font-size: 1rem; padding: 8px; box-sizing: border-box; }
-  button { background: #007bff; color: #fff; border: none; cursor: pointer; }
-  button:hover { background: #0056b3; }
+  button#submitBtn { background: #007bff; color: #fff; border: none; cursor: pointer; }
+  button#submitBtn:hover { background: #0056b3; }
   #accumulatedItems, #previousEntries { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; margin-bottom: 20px; position: relative; }
-  .entry-box { background: #f0f0f0; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; white-space: normal; position: relative; }
-  .delete-btn {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
+  .entry-box {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 10px 40px 10px 10px;
+    margin-bottom: 10px;
+    white-space: normal;
+    position: relative;
     border-radius: 4px;
   }
-  .delete-btn:hover {
-    background: #a71d2a;
+  .delete-icon {
+    position: absolute;
+    top: 10px;
+    left: 10px; /* Because direction is rtl, left is visually right side */
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+  }
+  .delete-icon:hover {
+    opacity: 1;
   }
   h3 { margin-top: 30px; }
 </style>
@@ -165,7 +171,7 @@ submitBtn.addEventListener('click', async () => {
   }
 });
 
-// تحميل وعرض السجلات السابقة مع تحديث مباشر + إضافة زر حذف
+// تحميل وعرض السجلات السابقة مع تحديث مباشر + إضافة زر حذف كأيقونة صغيرة
 function formatDate(timestamp) {
   if (!timestamp) return "";
   const d = timestamp.toDate();
@@ -196,11 +202,14 @@ function renderEntries(docs) {
     pre.textContent = entryText.trim();
     entryDiv.appendChild(pre);
 
-    // زر الحذف
-    const delBtn = document.createElement('button');
-    delBtn.textContent = "حذف";
-    delBtn.className = "delete-btn";
-    delBtn.addEventListener('click', async () => {
+    // أيقونة الحذف (سلة المهملات)
+    const delIcon = document.createElement('img');
+    delIcon.src = "https://img.icons8.com/material-rounded/24/ff0000/trash.png"; // أيقونة سلة المهملات باللون الأحمر
+    delIcon.alt = "حذف";
+    delIcon.title = "حذف السجل";
+    delIcon.className = "delete-icon";
+
+    delIcon.addEventListener('click', async () => {
       if (confirm("هل أنت متأكد أنك تريد حذف هذا السجل؟")) {
         try {
           await deleteDoc(doc(db, "warehouseEntries", docSnap.id));
@@ -210,7 +219,8 @@ function renderEntries(docs) {
         }
       }
     });
-    entryDiv.appendChild(delBtn);
+
+    entryDiv.appendChild(delIcon);
 
     previousEntriesDiv.appendChild(entryDiv);
   });
@@ -221,7 +231,6 @@ const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc")
 onSnapshot(q, (querySnapshot) => {
   renderEntries(querySnapshot.docs);
 });
-
 </script>
 
 </body>
