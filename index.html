@@ -1,48 +1,99 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>تسجيل سحب أصناف من المخزن</title>
-<style>
-  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f9f9f9; }
-  label, select, input, button { display: block; width: 100%; margin-bottom: 10px; font-size: 1rem; padding: 8px; box-sizing: border-box; }
-  button#submitBtn { background: #007bff; color: #fff; border: none; cursor: pointer; }
-  button#submitBtn:hover { background: #0056b3; }
-  #accumulatedItems, #previousEntries { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; margin-bottom: 20px; position: relative; }
-  .entry-box {
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    padding: 10px 40px 10px 10px;
-    margin-bottom: 10px;
-    white-space: normal;
-    position: relative;
-    border-radius: 4px;
-  }
-  .delete-icon {
-    position: absolute;
-    top: 10px;
-    left: 10px; /* Because direction is rtl, left is visually right side */
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-  }
-  .delete-icon:hover {
-    opacity: 1;
-  }
-  h3 { margin-top: 30px; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Warehouse Dispatch Form</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+
+    label, select, input, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    button#submitBtn {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    button#submitBtn:hover {
+      background: #0056b3;
+    }
+
+    #accumulatedItems, #previousEntries {
+      white-space: pre-wrap;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 80px;
+      margin-bottom: 20px;
+    }
+
+    .entry-box {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      padding: 10px 40px 10px 10px;
+      margin-bottom: 10px;
+      white-space: normal;
+      position: relative;
+      border-radius: 4px;
+    }
+
+    .delete-icon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+
+    .delete-icon:hover {
+      opacity: 1;
+    }
+
+    h3 { margin-top: 30px; }
+
+    #langToggle {
+      float: left;
+      margin-bottom: 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    #langToggle:hover {
+      background: #218838;
+    }
+  </style>
 </head>
 <body>
 
-<h2>تسجيل سحب أصناف من المخزن</h2>
+<button id="langToggle">English</button>
 
-<label for="driverId">رقم السائق أو اسمه:</label>
+<h2 id="title">تسجيل سحب أصناف من المخزن</h2>
+
+<label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
 <input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
-<label for="itemSelect">اختر الصنف:</label>
+<label for="itemSelect" id="labelItem">اختر الصنف:</label>
 <select id="itemSelect">
   <option value="">-- اختر صنف --</option>
   <option value="Screen">Screen</option>
@@ -51,15 +102,15 @@
   <option value="Keyboard">Keyboard</option>
 </select>
 
-<label for="serialInput">أدخل رقم السيريال واضغط Enter:</label>
+<label for="serialInput" id="labelSerial">أدخل رقم السيريال واضغط Enter:</label>
 <input type="text" id="serialInput" placeholder="أدخل رقم السيريال هنا" />
 
-<h3>الأصناف المضافة:</h3>
+<h3 id="addedItemsTitle">الأصناف المضافة:</h3>
 <div id="accumulatedItems">(لا توجد بيانات بعد)</div>
 
-<button id="submitBtn" style="margin-top:20px;">إرسال</button>
+<button id="submitBtn">إرسال</button>
 
-<h3>السجلات السابقة:</h3>
+<h3 id="previousEntriesTitle">السجلات السابقة:</h3>
 <div id="previousEntries">جاري التحميل...</div>
 
 <script type="module">
@@ -90,7 +141,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// عناصر الصفحة
+// DOM elements
 const driverInput = document.getElementById('driverId');
 const itemSelect = document.getElementById('itemSelect');
 const serialInput = document.getElementById('serialInput');
@@ -98,34 +149,102 @@ const accumulatedItemsDiv = document.getElementById('accumulatedItems');
 const submitBtn = document.getElementById('submitBtn');
 const previousEntriesDiv = document.getElementById('previousEntries');
 
-// لتخزين الأصناف والسيريالات مؤقتاً
+// Language toggle
+const langToggle = document.getElementById('langToggle');
+let currentLang = 'ar';
+
+const langStrings = {
+  ar: {
+    title: "تسجيل سحب أصناف من المخزن",
+    driverLabel: "رقم السائق أو اسمه:",
+    itemLabel: "اختر الصنف:",
+    serialLabel: "أدخل رقم السيريال واضغط Enter:",
+    serialPlaceholder: "أدخل رقم السيريال هنا",
+    addedItems: "الأصناف المضافة:",
+    previousEntries: "السجلات السابقة:",
+    noData: "(لا توجد بيانات بعد)",
+    loading: "جاري التحميل...",
+    submit: "إرسال",
+    deleteConfirm: "هل أنت متأكد أنك تريد حذف هذا السجل؟",
+    deleteError: "خطأ أثناء الحذف: ",
+    deleteSuccess: "تم حذف السجل.",
+    alertDriver: "يرجى إدخال رقم أو اسم السائق",
+    alertItem: "يرجى اختيار صنف أولاً",
+    alertSerial: "يرجى إدخال رقم السيريال",
+    alertEmpty: "يرجى إدخال صنف واحد على الأقل مع رقم/أرقام السيريال",
+    alertSaved: "تم الحفظ!",
+    toggleText: "English"
+  },
+  en: {
+    title: "Warehouse Dispatch Form",
+    driverLabel: "Driver Name or ID:",
+    itemLabel: "Select Item:",
+    serialLabel: "Enter Serial and press Enter:",
+    serialPlaceholder: "Enter Serial Number Here",
+    addedItems: "Added Items:",
+    previousEntries: "Previous Records:",
+    noData: "(No data yet)",
+    loading: "Loading...",
+    submit: "Submit",
+    deleteConfirm: "Are you sure you want to delete this record?",
+    deleteError: "Error deleting: ",
+    deleteSuccess: "Record deleted.",
+    alertDriver: "Please enter driver name or ID",
+    alertItem: "Please select an item first",
+    alertSerial: "Please enter a serial number",
+    alertEmpty: "Please enter at least one item and serial",
+    alertSaved: "Saved successfully!",
+    toggleText: "عربي"
+  }
+};
+
+function setLang(lang) {
+  const t = langStrings[lang];
+  document.body.dir = (lang === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('labelDriver').textContent = t.driverLabel;
+  document.getElementById('labelItem').textContent = t.itemLabel;
+  document.getElementById('labelSerial').textContent = t.serialLabel;
+  document.getElementById('serialInput').placeholder = t.serialPlaceholder;
+  document.getElementById('addedItemsTitle').textContent = t.addedItems;
+  document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
+  document.getElementById('submitBtn').textContent = t.submit;
+  langToggle.textContent = t.toggleText;
+  updateDisplay(); // refresh display if labels changed
+}
+
+langToggle.addEventListener('click', () => {
+  currentLang = (currentLang === 'ar') ? 'en' : 'ar';
+  setLang(currentLang);
+});
+
+// Temporary entry storage
 const entries = {};
 
-// تحديث عرض الأصناف المضافة
 function updateDisplay() {
+  const t = langStrings[currentLang];
   if (Object.keys(entries).length === 0) {
-    accumulatedItemsDiv.textContent = "(لا توجد بيانات بعد)";
+    accumulatedItemsDiv.textContent = t.noData;
     return;
   }
   let displayText = "";
   for (const [item, serials] of Object.entries(entries)) {
-    displayText += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+    displayText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
   }
   accumulatedItemsDiv.textContent = displayText.trim();
 }
 
-// إضافة السيريال عند الضغط Enter
 serialInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
     const item = itemSelect.value.trim();
     const serial = serialInput.value.trim();
     if (!item) {
-      alert("يرجى اختيار صنف أولاً");
+      alert(langStrings[currentLang].alertItem);
       return;
     }
     if (!serial) {
-      alert("يرجى إدخال رقم السيريال");
+      alert(langStrings[currentLang].alertSerial);
       return;
     }
     if (!entries[item]) {
@@ -139,15 +258,15 @@ serialInput.addEventListener('keydown', e => {
   }
 });
 
-// إرسال البيانات إلى Firestore
 submitBtn.addEventListener('click', async () => {
+  const t = langStrings[currentLang];
   const driver = driverInput.value.trim();
   if (!driver) {
-    alert("يرجى إدخال رقم أو اسم السائق");
+    alert(t.alertDriver);
     return;
   }
   if (Object.keys(entries).length === 0) {
-    alert("يرجى إدخال صنف واحد على الأقل مع رقم/أرقام السيريال");
+    alert(t.alertEmpty);
     return;
   }
 
@@ -157,81 +276,73 @@ submitBtn.addEventListener('click', async () => {
       items: entries,
       createdAt: serverTimestamp()
     });
-    alert("تم الحفظ!");
-    // إعادة تعيين الحقول
+    alert(t.alertSaved);
     driverInput.value = '';
     itemSelect.value = '';
     serialInput.value = '';
-    for (const key in entries) {
-      delete entries[key];
-    }
+    for (const key in entries) delete entries[key];
     updateDisplay();
   } catch (error) {
-    alert("حدث خطأ أثناء الحفظ: " + error.message);
+    alert("Error: " + error.message);
   }
 });
 
-// تحميل وعرض السجلات السابقة مع تحديث مباشر + إضافة زر حذف كأيقونة صغيرة
 function formatDate(timestamp) {
   if (!timestamp) return "";
   const d = timestamp.toDate();
-  return d.toLocaleString("ar-EG");
+  return d.toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
 }
 
 function renderEntries(docs) {
+  const t = langStrings[currentLang];
   if (docs.length === 0) {
-    previousEntriesDiv.textContent = "لا توجد سجلات سابقة.";
+    previousEntriesDiv.textContent = t.loading;
     return;
   }
-  previousEntriesDiv.innerHTML = ""; // تنظيف المحتوى القديم
+  previousEntriesDiv.innerHTML = "";
   docs.forEach(docSnap => {
     const data = docSnap.data();
     const entryDiv = document.createElement('div');
     entryDiv.className = "entry-box";
-
-    // نص السجل
-    let entryText = `التاريخ: ${formatDate(data.createdAt)}\n`;
-    entryText += `السائق: ${data.driver}\n`;
-    entryText += `الأصناف:\n`;
+    let entryText = `${t.previousEntries} — ${formatDate(data.createdAt)}\n`;
+    entryText += `${t.driverLabel} ${data.driver}\n`;
+    entryText += `${t.addedItems}\n`;
     for (const [item, serials] of Object.entries(data.items)) {
-      entryText += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+      entryText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
     }
 
-    // إنشاء عنصر نصي مع احترام الأسطر
     const pre = document.createElement('pre');
     pre.textContent = entryText.trim();
     entryDiv.appendChild(pre);
 
-    // أيقونة الحذف (سلة المهملات)
     const delIcon = document.createElement('img');
-    delIcon.src = "https://img.icons8.com/material-rounded/24/ff0000/trash.png"; // أيقونة سلة المهملات باللون الأحمر
-    delIcon.alt = "حذف";
-    delIcon.title = "حذف السجل";
+    delIcon.src = "https://img.icons8.com/material-rounded/24/ff0000/trash.png";
+    delIcon.alt = "Delete";
+    delIcon.title = "Delete Record";
     delIcon.className = "delete-icon";
-
     delIcon.addEventListener('click', async () => {
-      if (confirm("هل أنت متأكد أنك تريد حذف هذا السجل؟")) {
+      if (confirm(t.deleteConfirm)) {
         try {
           await deleteDoc(doc(db, "warehouseEntries", docSnap.id));
-          alert("تم حذف السجل.");
+          alert(t.deleteSuccess);
         } catch (err) {
-          alert("خطأ أثناء الحذف: " + err.message);
+          alert(t.deleteError + err.message);
         }
       }
     });
 
     entryDiv.appendChild(delIcon);
-
     previousEntriesDiv.appendChild(entryDiv);
   });
 }
 
-// استماع مباشر على التحديثات الأخيرة (آخر 50 سجل)
 const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
 onSnapshot(q, (querySnapshot) => {
   renderEntries(querySnapshot.docs);
 });
-</script>
 
+// Set initial language
+setLang('ar');
+</script>
 </body>
 </html>
