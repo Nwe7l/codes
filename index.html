@@ -1,152 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Warehouse Dispatch Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warehouse Dispatch - Google Sheets</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-    h1 { text-align: center; }
-    input, button { padding: 8px; margin: 5px; }
-    .item-buttons button { margin: 5px; }
-    table { width: 100%; margin-top: 10px; border-collapse: collapse; background: #fff; }
-    th, td { padding: 10px; border: 1px solid #ccc; }
-    th { background: #333; color: white; }
-    tr.expandable { background: #eee; cursor: pointer; }
-    tr.details { display: none; background: #fafafa; }
-    .thumbnail { height: 40px; border-radius: 4px; }
+    body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+    input, select, button { padding: 8px; margin: 5px; }
   </style>
 </head>
 <body>
 
-<h1>Warehouse Dispatch Tracker</h1>
+<h2>Warehouse Dispatch Tracker</h2>
 
-<!-- Driver info -->
-<div>
-  <h3>Step 1: Driver Info</h3>
-  <input type="text" id="driverId" placeholder="Driver ID (optional)" />
-  <input type="file" id="driverImage" accept="image/*" />
-  <button onclick="submitDriver()">Submit Driver</button>
-</div>
+<input type="text" id="driverId" placeholder="Driver ID" />
+<input type="file" id="driverImage" accept="image/*" />
+<br>
 
-<!-- Items and serials -->
-<div id="itemsSection" style="display: none;">
-  <h3>Step 2: Select Items</h3>
-  <div class="item-buttons">
-    <button onclick="selectItem('Screen')">Screen</button>
-    <button onclick="selectItem('Router')">Router</button>
-    <button onclick="selectItem('Cable')">Cable</button>
-    <button onclick="selectItem('Laptop')">Laptop</button>
-  </div>
-  <div id="serialSection" style="display: none;">
-    <strong>Selected Item:</strong> <span id="currentItem"></span>
-    <input type="text" id="serialInput" placeholder="Enter Serial Number" />
-    <button onclick="addSerial()">Add</button>
-  </div>
-</div>
+<select id="item">
+  <option value="">-- Select Item --</option>
+  <option>Screen</option>
+  <option>Router</option>
+  <option>Cable</option>
+</select>
 
-<!-- Logs -->
-<div>
-  <h3>All Dispatches</h3>
-  <table>
-    <thead>
-      <tr><th>Date</th><th>Click to Expand</th></tr>
-    </thead>
-    <tbody id="logBody"></tbody>
-  </table>
-</div>
+<input type="text" id="serial" placeholder="Serial Number" />
+<button onclick="submit()">Submit</button>
 
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+<script>
+  async function submit() {
+    const driverId = document.getElementById("driverId").value;
+    const serial = document.getElementById("serial").value;
+    const item = document.getElementById("item").value;
+    const imageFile = document.getElementById("driverImage").files[0];
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
-    authDomain: "code-64718.firebaseapp.com",
-    databaseURL: "https://code-64718-default-rtdb.firebaseio.com",
-    projectId: "code-64718",
-    storageBucket: "code-64718.firebasestorage.app",
-    messagingSenderId: "976088837146",
-    appId: "1:976088837146:web:755a0643e01d2d45d175a3",
-    measurementId: "G-XFE7T9Q87M"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  const dispatchRef = ref(db, 'dispatches');
-
-  let currentDispatch = { id: '', image: '', date: '', items: [] };
-
-  document.getElementById("driverImage").addEventListener('change', function () {
-    const file = this.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      currentDispatch.image = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
-  function submitDriver() {
-    const id = document.getElementById("driverId").value.trim();
-    if (!id && !currentDispatch.image) {
-      alert("Please enter an ID or upload an image.");
-      return;
+    let imageUrl = '';
+    if (imageFile) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        imageUrl = reader.result;
+        await sendToSheet();
+      };
+      reader.readAsDataURL(imageFile);
+    } else {
+      await sendToSheet();
     }
-    currentDispatch.id = id || '—';
-    currentDispatch.date = new Date().toLocaleString();
-    currentDispatch.items = [];
-    document.getElementById("itemsSection").style.display = 'block';
-  }
 
-  function selectItem(itemName) {
-    document.getElementById("currentItem").textContent = itemName;
-    document.getElementById("serialSection").style.display = 'inline';
-    document.getElementById("serialInput").dataset.item = itemName;
-  }
-
-  function addSerial() {
-    const serial = document.getElementById("serialInput").value.trim();
-    if (!serial) return alert("Enter a serial number");
-    const item = document.getElementById("serialInput").dataset.item;
-    currentDispatch.items.push({ item, serial });
-    document.getElementById("serialInput").value = '';
-    // Save to Firebase
-    push(dispatchRef, currentDispatch);
-  }
-
-  function renderDispatches(data) {
-    const tbody = document.getElementById("logBody");
-    tbody.innerHTML = "";
-    Object.entries(data).reverse().forEach(([key, dispatch], index) => {
-      const row = document.createElement("tr");
-      row.className = "expandable";
-      row.innerHTML = `<td>${dispatch.date}</td><td>Click to view</td>`;
-      row.onclick = () => {
-        const details = document.getElementById(`details-${index}`);
-        details.style.display = details.style.display === "none" ? "table-row" : "none";
+    async function sendToSheet() {
+      const payload = {
+        driverId,
+        serial,
+        item,
+        imageUrl
       };
 
-      const detailsRow = document.createElement("tr");
-      detailsRow.className = "details";
-      detailsRow.id = `details-${index}`;
-      let html = `<strong>Driver ID:</strong> ${dispatch.id}<br>`;
-      if (dispatch.image) html += `<img class="thumbnail" src="${dispatch.image}" /><br>`;
-      (dispatch.items || []).forEach(item => {
-        html += `• <b>${item.item}</b> — ${item.serial}<br>`;
+      await fetch("YOUR_WEB_APP_URL", {
+        method: "POST",
+        body: JSON.stringify(payload)
       });
-      detailsRow.innerHTML = `<td colspan="2">${html}</td>`;
 
-      tbody.appendChild(row);
-      tbody.appendChild(detailsRow);
-    });
+      alert("Submitted!");
+      document.getElementById("driverId").value = '';
+      document.getElementById("serial").value = '';
+      document.getElementById("item").value = '';
+      document.getElementById("driverImage").value = '';
+    }
   }
-
-  onValue(dispatchRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) renderDispatches(data);
-  });
 </script>
 
 </body>
