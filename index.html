@@ -93,19 +93,52 @@
     async function loadEntries() {
       const entryList = document.getElementById("entryList");
       entryList.innerHTML = "جاري التحميل...";
+
       const querySnapshot = await getDocs(collection(db, "dispatch"));
-      let html = "";
-      querySnapshot.forEach((doc) => {
+      const entries = [];
+
+      querySnapshot.forEach(doc => {
         const d = doc.data();
-        html += `
-          <div class="entry">
-            <b>التاريخ:</b> ${d.timestamp?.toDate().toLocaleString() || "جاري الحفظ"}<br>
-            <b>السائق:</b> ${d.driverId || "بصورة فقط"}<br>
-            <b>الصنف:</b> ${d.item} — <b>السيريال:</b> ${d.serial.split(",").map(s => `&lt;${s.trim()}&gt;`).join(" ")}<br>
-            ${d.imageUrl ? `<img src="${d.imageUrl}" width="100" />` : ""}
-            <hr>
-          </div>`;
+        entries.push({ id: doc.id, ...d });
       });
+
+      // تجميع حسب driverId + تاريخ اليوم (مثلاً بصيغة yyyy-mm-dd)
+      const grouped = {};
+
+      entries.forEach(d => {
+        // نحصل على تاريخ فقط بدون وقت
+        const dateObj = d.timestamp?.toDate();
+        if (!dateObj) return;
+
+        const dateStr = dateObj.toISOString().split("T")[0]; // YYYY-MM-DD
+        const key = `${d.driverId}_${dateStr}`;
+
+        if (!grouped[key]) {
+          grouped[key] = {
+            driverId: d.driverId,
+            dateStr,
+            items: []
+          };
+        }
+        grouped[key].items.push({ item: d.item, serial: d.serial });
+      });
+
+      let html = "";
+
+      for (const key in grouped) {
+        const group = grouped[key];
+        html += `<div class="entry-box">
+          <b>التاريخ:</b> ${group.dateStr} <br>
+          <b>السائق:</b> ${group.driverId || "بصورة فقط"} <br>
+          <b>الأصناف:</b><br>`;
+
+        group.items.forEach(it => {
+          html += `- ${it.item} — السيريال: ${it.serial.split(",").map(s => `&lt;${s.trim()}&gt;`).join(" ")}<br>`;
+        });
+
+        html += `</div><br>`;
+      }
+
       entryList.innerHTML = html || "لا توجد بيانات بعد.";
     }
 
@@ -116,7 +149,13 @@
     body { font-family: 'Arial', sans-serif; background: #f3f3f3; padding: 20px; direction: rtl; }
     input, select, button, textarea { padding: 10px; margin: 5px 0; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
     button { background: #4CAF50; color: white; cursor: pointer; }
-    .entry { background: #fff; padding: 10px; margin: 10px 0; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    .entry-box {
+      background: #e3f2fd;
+      border: 2px solid #2196f3;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
     .tag { display: inline-block; background: #d0eaff; padding: 5px 10px; margin: 3px; border-radius: 6px; color: #0073aa; font-weight: bold; }
   </style>
 </head>
