@@ -3,18 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>تسجيل أصناف السائق</title>
+<title>Warehouse Item Serial Tracker</title>
 <style>
-  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f4f4f4; }
-  label, input, button, select, textarea { font-size: 1rem; margin: 5px 0; }
-  input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-  button { background: #007bff; color: white; border: none; padding: 10px; cursor: pointer; }
+  body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f9f9f9; }
+  label, select, input, button { display: block; width: 100%; margin-bottom: 10px; font-size: 1rem; padding: 8px; box-sizing: border-box; }
+  button { background: #007bff; color: #fff; border: none; cursor: pointer; }
   button:hover { background: #0056b3; }
-  .item-block { background: white; padding: 10px; margin: 10px 0; border-radius: 6px; box-shadow: 0 0 5px #ccc; }
-  .serials-list { margin-top: 8px; font-family: monospace; }
-  #entries { margin-top: 30px; }
-  .entry { background: white; padding: 15px; margin-bottom: 15px; border-radius: 6px; box-shadow: 0 0 5px #bbb; }
-  .entry h4 { margin-bottom: 8px; }
+  #accumulatedItems { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; }
 </style>
 </head>
 <body>
@@ -24,27 +19,31 @@
 <label for="driverId">رقم السائق أو اسمه:</label>
 <input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
-<div id="itemsContainer"></div>
+<label for="itemSelect">اختر الصنف:</label>
+<select id="itemSelect">
+  <option value="">-- اختر صنف --</option>
+  <option value="Screen">Screen</option>
+  <option value="Cable">Cable</option>
+  <option value="Router">Router</option>
+  <option value="Keyboard">Keyboard</option>
+  <!-- أضف أصناف أخرى حسب الحاجة -->
+</select>
 
-<button id="addItemBtn">+ إضافة صنف جديد</button>
+<label for="serialInput">أدخل رقم السيريال واضغط Enter:</label>
+<input type="text" id="serialInput" placeholder="أدخل رقم السيريال هنا" />
+
+<h3>الأصناف المضافة:</h3>
+<div id="accumulatedItems">(لا توجد بيانات بعد)</div>
 
 <button id="submitBtn" style="margin-top:20px;">إرسال</button>
 
-<hr/>
-
-<h3>السجلات السابقة</h3>
-<div id="entries">جاري التحميل...</div>
-
 <script type="module">
-// Firebase إعداد وتهيئة
+// Firebase setup (تأكد من استبدال config بمعلوماتك)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import {
   getFirestore,
   collection,
   addDoc,
-  onSnapshot,
-  query,
-  orderBy,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
@@ -61,81 +60,62 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// DOM عناصر
-const driverInput = document.getElementById("driverId");
-const itemsContainer = document.getElementById("itemsContainer");
-const addItemBtn = document.getElementById("addItemBtn");
-const submitBtn = document.getElementById("submitBtn");
-const entriesDiv = document.getElementById("entries");
+// DOM references
+const driverInput = document.getElementById('driverId');
+const itemSelect = document.getElementById('itemSelect');
+const serialInput = document.getElementById('serialInput');
+const accumulatedItemsDiv = document.getElementById('accumulatedItems');
+const submitBtn = document.getElementById('submitBtn');
 
-// إنشاء صنف جديد
-function createItemBlock() {
-  const itemBlock = document.createElement("div");
-  itemBlock.className = "item-block";
+// Object to hold items and serials { itemName: [serial1, serial2, ...], ... }
+const entries = {};
 
-  const label = document.createElement("label");
-  label.textContent = "اسم الصنف:";
-  const itemNameInput = document.createElement("input");
-  itemNameInput.type = "text";
-  itemNameInput.placeholder = "مثال: Screen أو Cable";
-
-  const serialInputLabel = document.createElement("label");
-  serialInputLabel.textContent = "أدخل أرقام السيريال واضغط Enter بعد كل رقم:";
-  const serialInput = document.createElement("input");
-  serialInput.type = "text";
-  serialInput.placeholder = "أدخل رقم السيريال واضغط Enter";
-
-  const serialsList = document.createElement("div");
-  serialsList.className = "serials-list";
-
-  let serials = [];
-
-  serialInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const val = serialInput.value.trim();
-      if (val && !serials.includes(val)) {
-        serials.push(val);
-        serialsList.textContent = serials.map(s => `<${s}>`).join(" ");
-        serialInput.value = "";
-      }
-    }
-  });
-
-  itemBlock.appendChild(label);
-  itemBlock.appendChild(itemNameInput);
-  itemBlock.appendChild(serialInputLabel);
-  itemBlock.appendChild(serialInput);
-  itemBlock.appendChild(serialsList);
-
-  // أضف خاصية لاسترجاع البيانات من العنصر
-  itemBlock.getData = () => {
-    const name = itemNameInput.value.trim();
-    return name ? { name, serials: [...serials] } : null;
-  };
-
-  return itemBlock;
+// تحديث عرض البيانات المجمعة
+function updateDisplay() {
+  if (Object.keys(entries).length === 0) {
+    accumulatedItemsDiv.textContent = "(لا توجد بيانات بعد)";
+    return;
+  }
+  let displayText = "";
+  for (const [item, serials] of Object.entries(entries)) {
+    displayText += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+  }
+  accumulatedItemsDiv.textContent = displayText.trim();
 }
 
-// إضافة صنف جديد عند الضغط على الزر
-addItemBtn.addEventListener("click", () => {
-  const newItem = createItemBlock();
-  itemsContainer.appendChild(newItem);
+// عند ضغط Enter في خانة السيريال
+serialInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = itemSelect.value.trim();
+    const serial = serialInput.value.trim();
+    if (!item) {
+      alert("يرجى اختيار صنف أولاً");
+      return;
+    }
+    if (!serial) {
+      alert("يرجى إدخال رقم السيريال");
+      return;
+    }
+    if (!entries[item]) {
+      entries[item] = [];
+    }
+    if (!entries[item].includes(serial)) {
+      entries[item].push(serial);
+      updateDisplay();
+    }
+    serialInput.value = '';
+  }
 });
 
-// حفظ البيانات إلى Firebase
-submitBtn.addEventListener("click", async () => {
+// عند الضغط على زر الإرسال
+submitBtn.addEventListener('click', async () => {
   const driver = driverInput.value.trim();
   if (!driver) {
     alert("يرجى إدخال رقم أو اسم السائق");
     return;
   }
-  const itemsBlocks = [...itemsContainer.children];
-  const items = itemsBlocks
-    .map(b => b.getData())
-    .filter(x => x && x.serials.length > 0);
-
-  if (items.length === 0) {
+  if (Object.keys(entries).length === 0) {
     alert("يرجى إدخال صنف واحد على الأقل مع رقم/أرقام السيريال");
     return;
   }
@@ -143,58 +123,22 @@ submitBtn.addEventListener("click", async () => {
   try {
     await addDoc(collection(db, "warehouseEntries"), {
       driver,
-      items,
+      items: entries,
       createdAt: serverTimestamp()
     });
     alert("تم الحفظ!");
-    // مسح الإدخالات
-    driverInput.value = "";
-    itemsContainer.innerHTML = "";
-  } catch (err) {
-    alert("حدث خطأ أثناء الحفظ: " + err.message);
+    // إعادة تعيين الحقول
+    driverInput.value = '';
+    itemSelect.value = '';
+    serialInput.value = '';
+    for (const key in entries) {
+      delete entries[key];
+    }
+    updateDisplay();
+  } catch (error) {
+    alert("حدث خطأ أثناء الحفظ: " + error.message);
   }
 });
-
-// عرض السجلات السابقة مباشرةً و بتحديث مباشر
-function displayEntries(entries) {
-  if (entries.length === 0) {
-    entriesDiv.textContent = "لا توجد سجلات بعد.";
-    return;
-  }
-  entriesDiv.innerHTML = "";
-  entries.forEach(e => {
-    const date = e.createdAt ? new Date(e.createdAt.seconds * 1000).toLocaleString("ar-EG") : "بدون تاريخ";
-    const div = document.createElement("div");
-    div.className = "entry";
-
-    const header = document.createElement("h4");
-    header.textContent = `التاريخ: ${date}`;
-    div.appendChild(header);
-
-    const driverP = document.createElement("p");
-    driverP.textContent = `السائق: ${e.driver}`;
-    div.appendChild(driverP);
-
-    const itemsList = document.createElement("div");
-    itemsList.innerHTML = "الأصناف:";
-    e.items.forEach(it => {
-      const p = document.createElement("p");
-      p.textContent = `- ${it.name} — السيريال: ${it.serials.map(s => `<${s}>`).join(" ")}`;
-      itemsList.appendChild(p);
-    });
-    div.appendChild(itemsList);
-
-    entriesDiv.appendChild(div);
-  });
-}
-
-// تحميل السجلات مع التحديث المباشر
-const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
-onSnapshot(q, (snapshot) => {
-  const entries = snapshot.docs.map(doc => doc.data());
-  displayEntries(entries);
-});
-
 </script>
 
 </body>
