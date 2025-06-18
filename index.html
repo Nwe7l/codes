@@ -9,7 +9,23 @@
   label, select, input, button { display: block; width: 100%; margin-bottom: 10px; font-size: 1rem; padding: 8px; box-sizing: border-box; }
   button { background: #007bff; color: #fff; border: none; cursor: pointer; }
   button:hover { background: #0056b3; }
-  #accumulatedItems, #previousEntries { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; margin-bottom: 20px; }
+  #accumulatedItems, #previousEntries { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; margin-bottom: 20px; position: relative; }
+  .entry-box { background: #f0f0f0; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; white-space: normal; position: relative; }
+  .delete-btn {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-radius: 4px;
+  }
+  .delete-btn:hover {
+    background: #a71d2a;
+  }
   h3 { margin-top: 30px; }
 </style>
 </head>
@@ -50,7 +66,9 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  onSnapshot
+  onSnapshot,
+  deleteDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -147,7 +165,7 @@ submitBtn.addEventListener('click', async () => {
   }
 });
 
-// تحميل وعرض السجلات السابقة مع تحديث مباشر
+// تحميل وعرض السجلات السابقة مع تحديث مباشر + إضافة زر حذف
 function formatDate(timestamp) {
   if (!timestamp) return "";
   const d = timestamp.toDate();
@@ -159,23 +177,47 @@ function renderEntries(docs) {
     previousEntriesDiv.textContent = "لا توجد سجلات سابقة.";
     return;
   }
-  let html = "";
-  docs.forEach(doc => {
-    const data = doc.data();
-    html += `التاريخ: ${formatDate(data.createdAt)}\n`;
-    html += `السائق: ${data.driver}\n`;
-    html += `الأصناف:\n`;
+  previousEntriesDiv.innerHTML = ""; // تنظيف المحتوى القديم
+  docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const entryDiv = document.createElement('div');
+    entryDiv.className = "entry-box";
+
+    // نص السجل
+    let entryText = `التاريخ: ${formatDate(data.createdAt)}\n`;
+    entryText += `السائق: ${data.driver}\n`;
+    entryText += `الأصناف:\n`;
     for (const [item, serials] of Object.entries(data.items)) {
-      html += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+      entryText += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
     }
-    html += "\n";
+
+    // إنشاء عنصر نصي مع احترام الأسطر
+    const pre = document.createElement('pre');
+    pre.textContent = entryText.trim();
+    entryDiv.appendChild(pre);
+
+    // زر الحذف
+    const delBtn = document.createElement('button');
+    delBtn.textContent = "حذف";
+    delBtn.className = "delete-btn";
+    delBtn.addEventListener('click', async () => {
+      if (confirm("هل أنت متأكد أنك تريد حذف هذا السجل؟")) {
+        try {
+          await deleteDoc(doc(db, "warehouseEntries", docSnap.id));
+          alert("تم حذف السجل.");
+        } catch (err) {
+          alert("خطأ أثناء الحذف: " + err.message);
+        }
+      }
+    });
+    entryDiv.appendChild(delBtn);
+
+    previousEntriesDiv.appendChild(entryDiv);
   });
-  previousEntriesDiv.textContent = html.trim();
 }
 
 // استماع مباشر على التحديثات الأخيرة (آخر 50 سجل)
 const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
-
 onSnapshot(q, (querySnapshot) => {
   renderEntries(querySnapshot.docs);
 });
