@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Warehouse Dispatch Log</title>
+  <title>Warehouse Dispatch Log with ID Photo</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -38,6 +38,10 @@
       background-color: #333;
       color: white;
     }
+    img.thumbnail {
+      height: 50px;
+      border-radius: 4px;
+    }
     .controls {
       margin-top: 10px;
     }
@@ -50,6 +54,8 @@
   <div class="form-group">
     <label for="driverId">Driver ID:</label>
     <input type="text" id="driverId" placeholder="Enter driver ID" />
+    <label for="idImage">Upload ID Image:</label>
+    <input type="file" id="idImage" accept="image/*" />
   </div>
 
   <div class="form-group">
@@ -71,6 +77,7 @@
       <tr>
         <th>#</th>
         <th>Driver ID</th>
+        <th>ID Photo</th>
         <th>Item Name</th>
         <th>Serial Number</th>
       </tr>
@@ -85,18 +92,26 @@
       const driverId = document.getElementById("driverId").value.trim();
       const itemName = document.getElementById("itemName").value.trim();
       const serialNumber = document.getElementById("serialNumber").value.trim();
+      const idImageInput = document.getElementById("idImage");
 
-      if (!driverId || !itemName || !serialNumber) {
-        alert("Please fill in all fields.");
+      if (!driverId || !itemName || !serialNumber || idImageInput.files.length === 0) {
+        alert("Please fill in all fields and upload an ID image.");
         return;
       }
 
-      data.push({ driverId, itemName, serialNumber });
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const imageBase64 = e.target.result;
 
+        data.push({ driverId, itemName, serialNumber, image: imageBase64 });
+        updateTable();
+      };
+      reader.readAsDataURL(idImageInput.files[0]);
+
+      // Clear input fields
       document.getElementById("itemName").value = "";
       document.getElementById("serialNumber").value = "";
-
-      updateTable();
+      idImageInput.value = "";
     }
 
     function updateTable() {
@@ -108,6 +123,7 @@
         row.innerHTML = `
           <td>${index + 1}</td>
           <td>${entry.driverId}</td>
+          <td><img class="thumbnail" src="${entry.image}" alt="ID" /></td>
           <td>${entry.itemName}</td>
           <td>${entry.serialNumber}</td>
         `;
@@ -130,16 +146,16 @@
         return;
       }
 
-      let csv = "Driver ID,Item Name,Serial Number\n";
+      let csv = "Driver ID,Item Name,Serial Number,ID Image (Base64)\n";
       data.forEach(entry => {
-        csv += `${entry.driverId},${entry.itemName},${entry.serialNumber}\n`;
+        csv += `"${entry.driverId}","${entry.itemName}","${entry.serialNumber}","${entry.image}"\n`;
       });
 
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "warehouse_dispatch.csv";
+      a.download = "warehouse_dispatch_with_images.csv";
       a.click();
     }
   </script>
