@@ -1,67 +1,87 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
-  <title>Warehouse Dispatch - Google Sheets</title>
+  <meta charset="UTF-8">
+  <title>متابعة المخزن - Warehouse Tracker</title>
   <style>
-    body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+    body { font-family: Arial; padding: 20px; background: #f0f0f0; direction: rtl; }
     input, select, button { padding: 8px; margin: 5px; }
+    #entries { margin-top: 20px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 0 10px #ccc; }
+    .entry { border-bottom: 1px solid #ccc; padding: 5px 0; }
   </style>
 </head>
 <body>
 
-<h2>Warehouse Dispatch Tracker</h2>
+<h2>تسجيل خروج مواد من المخزن</h2>
 
-<input type="text" id="driverId" placeholder="Driver ID" />
+<input type="text" id="driverId" placeholder="رقم السائق (أو ارفع صورة)" />
 <input type="file" id="driverImage" accept="image/*" />
 <br>
 
 <select id="item">
-  <option value="">-- Select Item --</option>
+  <option value="">— اختر الصنف —</option>
   <option>Screen</option>
   <option>Router</option>
   <option>Cable</option>
 </select>
 
-<input type="text" id="serial" placeholder="Serial Number" />
-<button onclick="submit()">Submit</button>
+<input type="text" id="serial" placeholder="رقم السيريال" />
+<button onclick="submit()">إرسال</button>
+
+<div id="entries">
+  <h3>السجلات الأخيرة</h3>
+  <div id="entryList"></div>
+</div>
 
 <script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzzvOYdMUVrd5GHPc7uRhoAA5XBrvRlR3fQbpX6uA8eGExvKOxBc8LzCRY9NT6LWQvIBQ/exec";
+
   async function submit() {
     const driverId = document.getElementById("driverId").value;
-    const serial = document.getElementById("serial").value;
     const item = document.getElementById("item").value;
-    const imageFile = document.getElementById("driverImage").files[0];
+    const serial = document.getElementById("serial").value;
+    const file = document.getElementById("driverImage").files[0];
 
-    let imageUrl = '';
-    if (imageFile) {
+    if (!item || !serial || (!driverId && !file)) {
+      alert("يرجى تعبئة الحقول المطلوبة");
+      return;
+    }
+
+    let imageUrl = "";
+    if (file) {
       const reader = new FileReader();
       reader.onload = async () => {
         imageUrl = reader.result;
-        await sendToSheet();
+        await sendAndShow();
       };
-      reader.readAsDataURL(imageFile);
+      reader.readAsDataURL(file);
     } else {
-      await sendToSheet();
+      await sendAndShow();
     }
 
-    async function sendToSheet() {
-      const payload = {
-        driverId,
-        serial,
-        item,
-        imageUrl
-      };
-
-      await fetch("YOUR_WEB_APP_URL", {
+    async function sendAndShow() {
+      const payload = { driverId, item, serial, imageUrl };
+      await fetch(WEB_APP_URL, {
         method: "POST",
         body: JSON.stringify(payload)
       });
 
-      alert("Submitted!");
-      document.getElementById("driverId").value = '';
-      document.getElementById("serial").value = '';
-      document.getElementById("item").value = '';
-      document.getElementById("driverImage").value = '';
+      const entry = document.createElement("div");
+      entry.className = "entry";
+      entry.innerHTML = `
+        <strong>السائق:</strong> ${driverId || 'تم رفع صورة فقط'}<br>
+        <strong>الصنف:</strong> ${item}<br>
+        <strong>السيريال:</strong> ${serial}<br>
+        ${imageUrl ? `<img src="${imageUrl}" width="100">` : ""}
+        <br><small>تمت الإضافة بتاريخ: ${new Date().toLocaleString()}</small>
+      `;
+      document.getElementById("entryList").prepend(entry);
+
+      // مسح البيانات
+      document.getElementById("driverId").value = "";
+      document.getElementById("item").value = "";
+      document.getElementById("serial").value = "";
+      document.getElementById("driverImage").value = "";
     }
   }
 </script>
