@@ -1,90 +1,115 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>متابعة المخزن - Warehouse Tracker</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f0f0f0; direction: rtl; }
-    input, select, button { padding: 8px; margin: 5px; }
-    #entries { margin-top: 20px; background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 0 10px #ccc; }
-    .entry { border-bottom: 1px solid #ccc; padding: 5px 0; }
-  </style>
-</head>
-<body>
+  <meta charset="UTF-8" />
+  <title>متابعة المخزن - Firebase</title>
+  <script type="module">
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-<h2>تسجيل خروج مواد من المخزن</h2>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
+      authDomain: "code-64718.firebaseapp.com",
+      projectId: "code-64718",
+      storageBucket: "code-64718.appspot.com",
+      messagingSenderId: "976088837146",
+      appId: "1:976088837146:web:755a0643e01d2d45d175a3",
+      measurementId: "G-XFE7T9Q87M"
+    };
 
-<input type="text" id="driverId" placeholder="رقم السائق (أو ارفع صورة)" />
-<input type="file" id="driverImage" accept="image/*" />
-<br>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
 
-<select id="item">
-  <option value="">— اختر الصنف —</option>
-  <option>Screen</option>
-  <option>Router</option>
-  <option>Cable</option>
-</select>
+    async function submitForm() {
+      const driverId = document.getElementById("driverId").value;
+      const item = document.getElementById("item").value;
+      const serial = document.getElementById("serial").value;
+      const file = document.getElementById("driverImage").files[0];
 
-<input type="text" id="serial" placeholder="رقم السيريال" />
-<button onclick="submit()">إرسال</button>
+      if (!driverId && !file) {
+        alert("يرجى إدخال رقم السائق أو رفع صورة");
+        return;
+      }
+      if (!item || !serial) {
+        alert("يرجى إدخال الصنف ورقم السيريال");
+        return;
+      }
 
-<div id="entries">
-  <h3>السجلات الأخيرة</h3>
-  <div id="entryList"></div>
-</div>
+      let imageUrl = "";
+      if (file) {
+        const fileRef = ref(storage, 'driverImages/' + file.name + "_" + Date.now());
+        const snapshot = await uploadBytes(fileRef, file);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
 
-<script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzzvOYdMUVrd5GHPc7uRhoAA5XBrvRlR3fQbpX6uA8eGExvKOxBc8LzCRY9NT6LWQvIBQ/exec";
-
-  async function submit() {
-    const driverId = document.getElementById("driverId").value;
-    const item = document.getElementById("item").value;
-    const serial = document.getElementById("serial").value;
-    const file = document.getElementById("driverImage").files[0];
-
-    if (!item || !serial || (!driverId && !file)) {
-      alert("يرجى تعبئة الحقول المطلوبة");
-      return;
-    }
-
-    let imageUrl = "";
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        imageUrl = reader.result;
-        await sendAndShow();
-      };
-      reader.readAsDataURL(file);
-    } else {
-      await sendAndShow();
-    }
-
-    async function sendAndShow() {
-      const payload = { driverId, item, serial, imageUrl };
-      await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
+      await addDoc(collection(db, "dispatch"), {
+        driverId: driverId || "",
+        item,
+        serial,
+        imageUrl,
+        timestamp: serverTimestamp()
       });
 
-      const entry = document.createElement("div");
-      entry.className = "entry";
-      entry.innerHTML = `
-        <strong>السائق:</strong> ${driverId || 'تم رفع صورة فقط'}<br>
-        <strong>الصنف:</strong> ${item}<br>
-        <strong>السيريال:</strong> ${serial}<br>
-        ${imageUrl ? `<img src="${imageUrl}" width="100">` : ""}
-        <br><small>تمت الإضافة بتاريخ: ${new Date().toLocaleString()}</small>
-      `;
-      document.getElementById("entryList").prepend(entry);
+      alert("تم الحفظ!");
+      loadEntries();
+      clearForm();
+    }
 
-      // مسح البيانات
+    async function loadEntries() {
+      const entryList = document.getElementById("entryList");
+      entryList.innerHTML = "جاري التحميل...";
+      const querySnapshot = await getDocs(collection(db, "dispatch"));
+      let html = "";
+      querySnapshot.forEach((doc) => {
+        const d = doc.data();
+        html += `
+          <div class="entry">
+            <b>التاريخ:</b> ${d.timestamp?.toDate().toLocaleString() || "جاري الحفظ"}<br>
+            <b>السائق:</b> ${d.driverId || "بصورة فقط"}<br>
+            <b>الصنف:</b> ${d.item} — <b>السيريال:</b> ${d.serial}<br>
+            ${d.imageUrl ? `<img src="${d.imageUrl}" width="100" />` : ""}
+            <hr>
+          </div>`;
+      });
+      entryList.innerHTML = html || "لا توجد بيانات بعد.";
+    }
+
+    function clearForm() {
       document.getElementById("driverId").value = "";
       document.getElementById("item").value = "";
       document.getElementById("serial").value = "";
       document.getElementById("driverImage").value = "";
     }
-  }
-</script>
+
+    window.submitForm = submitForm;
+    window.addEventListener('DOMContentLoaded', loadEntries);
+  </script>
+
+  <style>
+    body { font-family: 'Arial', sans-serif; background: #f3f3f3; padding: 20px; direction: rtl; }
+    input, select, button { padding: 10px; margin: 5px 0; width: 100%; }
+    .entry { background: #fff; padding: 10px; margin: 10px 0; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+  </style>
+</head>
+<body>
+
+  <h2>نموذج تسجيل الخروج من المخزن</h2>
+
+  <input type="text" id="driverId" placeholder="رقم السائق (اختياري إذا أرفقت صورة)" />
+  <input type="file" id="driverImage" accept="image/*" />
+  <select id="item">
+    <option value="">-- اختر المادة --</option>
+    <option>Screen</option>
+    <option>Router</option>
+    <option>Cable</option>
+  </select>
+  <input type="text" id="serial" placeholder="رقم السيريال" />
+  <button onclick="submitForm()">إرسال</button>
+
+  <div id="entryList"></div>
 
 </body>
 </html>
