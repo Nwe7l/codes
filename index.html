@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>نظام المخزن - Firebase</title>
+  <title>مخزن - خروج مواد متعدد</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -22,33 +22,70 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    let serialList = [];
+    // Items list for dropdown
+    const availableItems = ["Screen", "Router", "Cable", "Power Adapter"];
 
     document.addEventListener("DOMContentLoaded", () => {
+      setupItemsSection();
       loadEntries();
+    });
 
-      const serialInput = document.getElementById("serialInput");
+    function setupItemsSection() {
+      const container = document.getElementById("itemsContainer");
+      addItemInput(container); // add one item input block initially
+
+      document.getElementById("addItemBtn").addEventListener("click", () => {
+        addItemInput(container);
+      });
+    }
+
+    // Add one item input block: dropdown + serial input + serial preview
+    function addItemInput(container) {
+      const index = container.children.length;
+      const div = document.createElement("div");
+      div.className = "item-block";
+
+      // Create item select
+      const select = document.createElement("select");
+      select.name = `item_${index}`;
+      select.innerHTML = `<option value="">-- اختر المادة --</option>` + availableItems.map(i => `<option>${i}</option>`).join("");
+      div.appendChild(select);
+
+      // Serial input
+      const serialInput = document.createElement("input");
+      serialInput.type = "text";
+      serialInput.placeholder = "أدخل رقم السيريال واضغط Enter";
+      serialInput.name = `serialInput_${index}`;
+      div.appendChild(serialInput);
+
+      // Serial preview container
+      const preview = document.createElement("div");
+      preview.className = "serial-preview";
+      div.appendChild(preview);
+
+      // Serial list array for this block
+      let serialList = [];
+
       serialInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          const value = serialInput.value.trim();
-          if (value) {
-            serialList.push(value);
-            updateSerialPreview();
+          const val = serialInput.value.trim();
+          if (val) {
+            serialList.push(val);
+            preview.innerHTML = serialList.map(s => `<span class="tag">&lt;${s}&gt;</span>`).join(" ");
             serialInput.value = "";
           }
         }
       });
-    });
 
-    function updateSerialPreview() {
-      const preview = document.getElementById("serialPreview");
-      preview.innerHTML = serialList.map(s => `<span class="tag">&lt;${s}&gt;</span>`).join(" ");
+      // Store serial list array on the div for later retrieval
+      div.serialList = serialList;
+
+      container.appendChild(div);
     }
 
     async function submitForm() {
       const driverId = document.getElementById("driverId").value.trim();
-      const item = document.getElementById("item").value;
       const file = document.getElementById("driverImage").files[0];
 
       if (!driverId && !file) {
@@ -56,11 +93,32 @@
         return;
       }
 
-      if (!item || serialList.length === 0) {
-        alert("يرجى اختيار الصنف وإضافة رقم أو أكثر من السيريال");
+      // Collect all items and their serials
+      const container = document.getElementById("itemsContainer");
+      const itemBlocks = container.querySelectorAll(".item-block");
+
+      const items = [];
+
+      for (const block of itemBlocks) {
+        const select = block.querySelector("select");
+        const itemName = select.value;
+        if (!itemName) continue; // skip empty
+
+        const serials = block.serialList || [];
+        if (serials.length === 0) {
+          alert(`يرجى إدخال رقم أو أكثر للسيريال للصنف: ${itemName}`);
+          return;
+        }
+
+        items.push({ item: itemName, serials });
+      }
+
+      if (items.length === 0) {
+        alert("يرجى إضافة صنف واحد على الأقل مع السيريال");
         return;
       }
 
+      // Upload image if any
       let imageUrl = "";
       if (file) {
         const fileRef = ref(storage, 'driverImages/' + file.name + "_" + Date.now());
@@ -68,11 +126,11 @@
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
+      // Save one document per driver+timestamp with all items array
       await addDoc(collection(db, "dispatch"), {
         driverId: driverId || "",
-        item,
-        serial: serialList.join(", "),
         imageUrl,
+        items,
         timestamp: serverTimestamp()
       });
 
@@ -83,11 +141,11 @@
 
     function clearForm() {
       document.getElementById("driverId").value = "";
-      document.getElementById("item").value = "";
-      document.getElementById("serialInput").value = "";
       document.getElementById("driverImage").value = "";
-      serialList = [];
-      updateSerialPreview();
+
+      const container = document.getElementById("itemsContainer");
+      container.innerHTML = "";
+      setupItemsSection();
     }
 
     async function loadEntries() {
@@ -102,60 +160,63 @@
         entries.push({ id: doc.id, ...d });
       });
 
-      // تجميع حسب driverId + تاريخ اليوم (YYYY-MM-DD)
-      const grouped = {};
-
-      entries.forEach(d => {
-        const dateObj = d.timestamp?.toDate();
-        if (!dateObj) return;
-        const dateStr = dateObj.toISOString().split("T")[0]; // YYYY-MM-DD
-        const key = `${d.driverId}_${dateStr}`;
-
-        if (!grouped[key]) {
-          grouped[key] = {
-            driverId: d.driverId,
-            dateStr,
-            itemsMap: {}
-          };
-        }
-
-        if (grouped[key].itemsMap[d.item]) {
-          grouped[key].itemsMap[d.item] += ", " + d.serial;
-        } else {
-          grouped[key].itemsMap[d.item] = d.serial;
-        }
-      });
-
-      let html = "";
-
-      for (const key in grouped) {
-        const group = grouped[key];
-        html += `<div class="entry-box">
-          <b>التاريخ:</b> ${group.dateStr} <br>
-          <b>السائق:</b> ${group.driverId || "بصورة فقط"} <br>
-          <b>الأصناف:</b><br><ul>`;
-
-        for (const itemName in group.itemsMap) {
-          const serialsFormatted = group.itemsMap[itemName]
-            .split(",")
-            .map(s => `&lt;${s.trim()}&gt;`)
-            .join(" ");
-          html += `<li>${itemName} — السيريال: ${serialsFormatted}</li>`;
-        }
-
-        html += `</ul></div><br>`;
+      if (entries.length === 0) {
+        entryList.innerHTML = "لا توجد بيانات بعد.";
+        return;
       }
 
-      entryList.innerHTML = html || "لا توجد بيانات بعد.";
+      // عرض كل سجل (كل سجل يحتوي على driverId + items[])
+      let html = "";
+      entries.sort((a,b) => {
+        if(!a.timestamp) return 1;
+        if(!b.timestamp) return -1;
+        return b.timestamp.toDate() - a.timestamp.toDate();
+      });
+
+      for (const e of entries) {
+        const dateStr = e.timestamp ? e.timestamp.toDate().toISOString().split("T")[0] : "بدون تاريخ";
+        const driver = e.driverId || (e.imageUrl ? "بصورة فقط" : "غير معروف");
+
+        html += `<div class="entry-box">
+          <b>التاريخ:</b> ${dateStr} <br>
+          <b>السائق:</b> ${driver} <br>
+          <b>الأصناف:</b><br><ul>`;
+
+        e.items.forEach(it => {
+          const serialsFormatted = it.serials.map(s => `&lt;${s}&gt;`).join(" ");
+          html += `<li>${it.item} — السيريال: ${serialsFormatted}</li>`;
+        });
+
+        html += "</ul></div><br>";
+      }
+
+      entryList.innerHTML = html;
     }
 
     window.submitForm = submitForm;
   </script>
 
   <style>
-    body { font-family: 'Arial', sans-serif; background: #f3f3f3; padding: 20px; direction: rtl; }
-    input, select, button, textarea { padding: 10px; margin: 5px 0; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
-    button { background: #4CAF50; color: white; cursor: pointer; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #f3f3f3;
+      padding: 20px;
+      direction: rtl;
+    }
+    input, select, button, textarea {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
     .entry-box {
       background: #e3f2fd;
       border: 2px solid #2196f3;
@@ -163,8 +224,26 @@
       border-radius: 10px;
       margin-bottom: 15px;
     }
-    .tag { display: inline-block; background: #d0eaff; padding: 5px 10px; margin: 3px; border-radius: 6px; color: #0073aa; font-weight: bold; }
-    ul { padding-inline-start: 20px; }
+    .tag {
+      display: inline-block;
+      background: #d0eaff;
+      padding: 5px 10px;
+      margin: 3px;
+      border-radius: 6px;
+      color: #0073aa;
+      font-weight: bold;
+    }
+    .serial-preview {
+      margin: 5px 0 10px 0;
+      min-height: 25px;
+    }
+    .item-block {
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 8px;
+      background: white;
+    }
   </style>
 </head>
 <body>
@@ -174,16 +253,8 @@
   <input type="text" id="driverId" placeholder="رقم السائق (اختياري إذا أرفقت صورة)" />
   <input type="file" id="driverImage" accept="image/*" />
 
-  <select id="item">
-    <option value="">-- اختر المادة --</option>
-    <option>Screen</option>
-    <option>Router</option>
-    <option>Cable</option>
-    <option>Power Adapter</option>
-  </select>
-
-  <input type="text" id="serialInput" placeholder="أدخل رقم السيريال واضغط Enter" />
-  <div id="serialPreview"></div>
+  <div id="itemsContainer"></div>
+  <button id="addItemBtn" type="button">+ إضافة صنف جديد</button>
 
   <button onclick="submitForm()">إرسال</button>
 
