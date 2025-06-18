@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Warehouse Item Serial Tracker</title>
+<title>تسجيل سحب أصناف من المخزن</title>
 <style>
   body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; background: #f9f9f9; }
   label, select, input, button { display: block; width: 100%; margin-bottom: 10px; font-size: 1rem; padding: 8px; box-sizing: border-box; }
   button { background: #007bff; color: #fff; border: none; cursor: pointer; }
   button:hover { background: #0056b3; }
-  #accumulatedItems { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; }
+  #accumulatedItems, #previousEntries { white-space: pre-wrap; background: #fff; border: 1px solid #ccc; padding: 10px; min-height: 80px; margin-bottom: 20px; }
+  h3 { margin-top: 30px; }
 </style>
 </head>
 <body>
@@ -26,7 +27,6 @@
   <option value="Cable">Cable</option>
   <option value="Router">Router</option>
   <option value="Keyboard">Keyboard</option>
-  <!-- أضف أصناف أخرى حسب الحاجة -->
 </select>
 
 <label for="serialInput">أدخل رقم السيريال واضغط Enter:</label>
@@ -37,14 +37,20 @@
 
 <button id="submitBtn" style="margin-top:20px;">إرسال</button>
 
+<h3>السجلات السابقة:</h3>
+<div id="previousEntries">جاري التحميل...</div>
+
 <script type="module">
-// Firebase setup (تأكد من استبدال config بمعلوماتك)
+// Firebase إعدادات
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import {
   getFirestore,
   collection,
   addDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -60,17 +66,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// DOM references
+// عناصر الصفحة
 const driverInput = document.getElementById('driverId');
 const itemSelect = document.getElementById('itemSelect');
 const serialInput = document.getElementById('serialInput');
 const accumulatedItemsDiv = document.getElementById('accumulatedItems');
 const submitBtn = document.getElementById('submitBtn');
+const previousEntriesDiv = document.getElementById('previousEntries');
 
-// Object to hold items and serials { itemName: [serial1, serial2, ...], ... }
+// لتخزين الأصناف والسيريالات مؤقتاً
 const entries = {};
 
-// تحديث عرض البيانات المجمعة
+// تحديث عرض الأصناف المضافة
 function updateDisplay() {
   if (Object.keys(entries).length === 0) {
     accumulatedItemsDiv.textContent = "(لا توجد بيانات بعد)";
@@ -83,7 +90,7 @@ function updateDisplay() {
   accumulatedItemsDiv.textContent = displayText.trim();
 }
 
-// عند ضغط Enter في خانة السيريال
+// إضافة السيريال عند الضغط Enter
 serialInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
@@ -108,7 +115,7 @@ serialInput.addEventListener('keydown', e => {
   }
 });
 
-// عند الضغط على زر الإرسال
+// إرسال البيانات إلى Firestore
 submitBtn.addEventListener('click', async () => {
   const driver = driverInput.value.trim();
   if (!driver) {
@@ -139,6 +146,40 @@ submitBtn.addEventListener('click', async () => {
     alert("حدث خطأ أثناء الحفظ: " + error.message);
   }
 });
+
+// تحميل وعرض السجلات السابقة مع تحديث مباشر
+function formatDate(timestamp) {
+  if (!timestamp) return "";
+  const d = timestamp.toDate();
+  return d.toLocaleString("ar-EG");
+}
+
+function renderEntries(docs) {
+  if (docs.length === 0) {
+    previousEntriesDiv.textContent = "لا توجد سجلات سابقة.";
+    return;
+  }
+  let html = "";
+  docs.forEach(doc => {
+    const data = doc.data();
+    html += `التاريخ: ${formatDate(data.createdAt)}\n`;
+    html += `السائق: ${data.driver}\n`;
+    html += `الأصناف:\n`;
+    for (const [item, serials] of Object.entries(data.items)) {
+      html += `- ${item} — السيريال: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+    }
+    html += "\n";
+  });
+  previousEntriesDiv.textContent = html.trim();
+}
+
+// استماع مباشر على التحديثات الأخيرة (آخر 50 سجل)
+const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
+
+onSnapshot(q, (querySnapshot) => {
+  renderEntries(querySnapshot.docs);
+});
+
 </script>
 
 </body>
