@@ -68,15 +68,13 @@
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
-      for (const serial of serialList) {
-        await addDoc(collection(db, "dispatch"), {
-          driverId: driverId || "",
-          item,
-          serial,
-          imageUrl,
-          timestamp: serverTimestamp()
-        });
-      }
+      await addDoc(collection(db, "dispatch"), {
+        driverId: driverId || "",
+        item,
+        serial: serialList.join(", "),
+        imageUrl,
+        timestamp: serverTimestamp()
+      });
 
       alert("تم الحفظ!");
       clearForm();
@@ -103,7 +101,7 @@
           <div class="entry">
             <b>التاريخ:</b> ${d.timestamp?.toDate().toLocaleString() || "جاري الحفظ"}<br>
             <b>السائق:</b> ${d.driverId || "بصورة فقط"}<br>
-            <b>الصنف:</b> ${d.item} — <b>السيريال:</b> ${d.serial}<br>
+            <b>الصنف:</b> ${d.item} — <b>السيريال:</b> ${d.serial.split(",").map(s => `&lt;${s.trim()}&gt;`).join(" ")}<br>
             ${d.imageUrl ? `<img src="${d.imageUrl}" width="100" />` : ""}
             <hr>
           </div>`;
