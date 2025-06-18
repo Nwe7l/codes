@@ -2,161 +2,198 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Warehouse Dispatch Log with ID Photo</title>
+  <title>Warehouse Dispatch System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f7f7f7;
+      background: #f5f5f5;
       padding: 20px;
     }
     h1 {
       text-align: center;
     }
-    .form-group {
-      margin-bottom: 10px;
+    .section {
+      margin-bottom: 20px;
     }
-    input, button {
+    input, select, button {
       padding: 8px;
       margin: 5px;
     }
-    label {
-      font-weight: bold;
+    .item-buttons button {
+      margin: 5px;
+      padding: 10px 20px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
-      background: #fff;
+      margin-top: 15px;
+      background: white;
     }
     th, td {
-      border: 1px solid #ccc;
       padding: 10px;
+      border: 1px solid #ccc;
       text-align: center;
     }
     th {
-      background-color: #333;
+      background: #333;
       color: white;
     }
     img.thumbnail {
       height: 50px;
       border-radius: 4px;
     }
-    .controls {
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
 
-  <h1>Warehouse Dispatch Tracker</h1>
+  <h1>Warehouse Dispatch System</h1>
 
-  <div class="form-group">
-    <label for="driverId">Driver ID:</label>
-    <input type="text" id="driverId" placeholder="Enter driver ID" />
-    <label for="idImage">Upload ID Image:</label>
-    <input type="file" id="idImage" accept="image/*" />
+  <!-- DRIVER INFO -->
+  <div class="section">
+    <h3>Step 1: Enter Driver Info</h3>
+    <input type="text" id="driverId" placeholder="Driver ID Number (optional)" />
+    <label>or upload ID image:</label>
+    <input type="file" id="driverImage" accept="image/*" />
+    <button onclick="submitDriver()">Submit Driver</button>
+    <div id="driverStatus"></div>
   </div>
 
-  <div class="form-group">
-    <label for="itemName">Item Name:</label>
-    <input type="text" id="itemName" placeholder="e.g., Screen" />
-    <label for="serialNumber">Serial Number:</label>
-    <input type="text" id="serialNumber" placeholder="e.g., SN123456" />
-    <button onclick="addItem()">Add Item</button>
+  <!-- ITEMS -->
+  <div class="section" id="itemsSection" style="display: none;">
+    <h3>Step 2: Select Item to Add Serial</h3>
+    <div class="item-buttons">
+      <button onclick="selectItem('Screen')">Screen</button>
+      <button onclick="selectItem('Router')">Router</button>
+      <button onclick="selectItem('Cable')">Cable</button>
+      <button onclick="selectItem('Laptop')">Laptop</button>
+      <!-- You can add more buttons here -->
+    </div>
+    <div id="serialInputSection" style="margin-top: 10px; display: none;">
+      <strong>Selected Item:</strong> <span id="selectedItemName"></span><br/>
+      <input type="text" id="serialInput" placeholder="Enter Serial Number" />
+      <button onclick="addSerial()">Add Serial</button>
+    </div>
   </div>
 
-  <div class="controls">
-    <strong>Total Items: <span id="itemCount">0</span></strong>
+  <!-- TABLE -->
+  <div class="section">
+    <h3>Dispatch Log</h3>
     <button onclick="downloadCSV()">Download CSV</button>
-    <button onclick="clearData()">Clear All</button>
+    <button onclick="clearTable()">Clear All</button>
+    <table id="logTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Driver ID</th>
+          <th>ID Image</th>
+          <th>Item</th>
+          <th>Serial Number</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
-
-  <table id="logTable">
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Driver ID</th>
-        <th>ID Photo</th>
-        <th>Item Name</th>
-        <th>Serial Number</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 
   <script>
-    let data = [];
+    let dispatchData = [];
+    let currentDriver = { id: '', image: '' };
+    let selectedItem = '';
 
-    function addItem() {
-      const driverId = document.getElementById("driverId").value.trim();
-      const itemName = document.getElementById("itemName").value.trim();
-      const serialNumber = document.getElementById("serialNumber").value.trim();
-      const idImageInput = document.getElementById("idImage");
+    function submitDriver() {
+      const idInput = document.getElementById("driverId").value.trim();
+      const imageInput = document.getElementById("driverImage");
 
-      if (!driverId || !itemName || !serialNumber || idImageInput.files.length === 0) {
-        alert("Please fill in all fields and upload an ID image.");
+      if (!idInput && imageInput.files.length === 0) {
+        alert("Please enter Driver ID or upload an image.");
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const imageBase64 = e.target.result;
+      if (imageInput.files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          currentDriver.image = e.target.result;
+          currentDriver.id = idInput || '—';
+          document.getElementById("driverStatus").innerHTML = `<b>Driver set:</b> ${currentDriver.id}`;
+          document.getElementById("itemsSection").style.display = 'block';
+        };
+        reader.readAsDataURL(imageInput.files[0]);
+      } else {
+        currentDriver.id = idInput;
+        currentDriver.image = '';
+        document.getElementById("driverStatus").innerHTML = `<b>Driver set:</b> ${currentDriver.id}`;
+        document.getElementById("itemsSection").style.display = 'block';
+      }
+    }
 
-        data.push({ driverId, itemName, serialNumber, image: imageBase64 });
-        updateTable();
-      };
-      reader.readAsDataURL(idImageInput.files[0]);
+    function selectItem(itemName) {
+      selectedItem = itemName;
+      document.getElementById("selectedItemName").textContent = itemName;
+      document.getElementById("serialInputSection").style.display = 'block';
+    }
 
-      // Clear input fields
-      document.getElementById("itemName").value = "";
-      document.getElementById("serialNumber").value = "";
-      idImageInput.value = "";
+    function addSerial() {
+      const serial = document.getElementById("serialInput").value.trim();
+      if (!serial) {
+        alert("Enter a serial number.");
+        return;
+      }
+
+      dispatchData.push({
+        driverId: currentDriver.id,
+        driverImage: currentDriver.image,
+        item: selectedItem,
+        serial: serial
+      });
+
+      document.getElementById("serialInput").value = '';
+      updateTable();
     }
 
     function updateTable() {
       const tbody = document.querySelector("#logTable tbody");
       tbody.innerHTML = "";
 
-      data.forEach((entry, index) => {
+      dispatchData.forEach((entry, index) => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${index + 1}</td>
           <td>${entry.driverId}</td>
-          <td><img class="thumbnail" src="${entry.image}" alt="ID" /></td>
-          <td>${entry.itemName}</td>
-          <td>${entry.serialNumber}</td>
+          <td>${entry.driverImage ? `<img class="thumbnail" src="${entry.driverImage}" />` : '—'}</td>
+          <td>${entry.item}</td>
+          <td>${entry.serial}</td>
         `;
         tbody.appendChild(row);
       });
-
-      document.getElementById("itemCount").textContent = data.length;
-    }
-
-    function clearData() {
-      if (confirm("Are you sure you want to clear all data?")) {
-        data = [];
-        updateTable();
-      }
     }
 
     function downloadCSV() {
-      if (data.length === 0) {
-        alert("No data to download.");
+      if (dispatchData.length === 0) {
+        alert("Nothing to export.");
         return;
       }
 
-      let csv = "Driver ID,Item Name,Serial Number,ID Image (Base64)\n";
-      data.forEach(entry => {
-        csv += `"${entry.driverId}","${entry.itemName}","${entry.serialNumber}","${entry.image}"\n`;
+      let csv = "Driver ID,Item,Serial,Driver Image (Base64)\n";
+      dispatchData.forEach(entry => {
+        csv += `"${entry.driverId}","${entry.item}","${entry.serial}","${entry.driverImage}"\n`;
       });
 
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "warehouse_dispatch_with_images.csv";
+      a.download = "dispatch_log.csv";
       a.click();
+    }
+
+    function clearTable() {
+      if (confirm("Clear all data?")) {
+        dispatchData = [];
+        updateTable();
+        document.getElementById("driverStatus").innerHTML = "";
+        document.getElementById("itemsSection").style.display = 'none';
+        currentDriver = { id: '', image: '' };
+      }
     }
   </script>
 
