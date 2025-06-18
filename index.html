@@ -2,9 +2,8 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>متابعة المخزن - Firebase</title>
+  <title>نظام المخزن - Firebase</title>
   <script type="module">
-    // Firebase SDK imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
@@ -23,18 +22,42 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
+    let serialList = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadEntries();
+
+      const serialInput = document.getElementById("serialInput");
+      serialInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const value = serialInput.value.trim();
+          if (value) {
+            serialList.push(value);
+            updateSerialPreview();
+            serialInput.value = "";
+          }
+        }
+      });
+    });
+
+    function updateSerialPreview() {
+      const preview = document.getElementById("serialPreview");
+      preview.innerHTML = serialList.map(s => `<span class="tag">&lt;${s}&gt;</span>`).join(" ");
+    }
+
     async function submitForm() {
-      const driverId = document.getElementById("driverId").value;
+      const driverId = document.getElementById("driverId").value.trim();
       const item = document.getElementById("item").value;
-      const serial = document.getElementById("serial").value;
       const file = document.getElementById("driverImage").files[0];
 
       if (!driverId && !file) {
         alert("يرجى إدخال رقم السائق أو رفع صورة");
         return;
       }
-      if (!item || !serial) {
-        alert("يرجى إدخال الصنف ورقم السيريال");
+
+      if (!item || serialList.length === 0) {
+        alert("يرجى اختيار الصنف وإضافة رقم أو أكثر من السيريال");
         return;
       }
 
@@ -45,17 +68,28 @@
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
-      await addDoc(collection(db, "dispatch"), {
-        driverId: driverId || "",
-        item,
-        serial,
-        imageUrl,
-        timestamp: serverTimestamp()
-      });
+      for (const serial of serialList) {
+        await addDoc(collection(db, "dispatch"), {
+          driverId: driverId || "",
+          item,
+          serial,
+          imageUrl,
+          timestamp: serverTimestamp()
+        });
+      }
 
       alert("تم الحفظ!");
-      loadEntries();
       clearForm();
+      loadEntries();
+    }
+
+    function clearForm() {
+      document.getElementById("driverId").value = "";
+      document.getElementById("item").value = "";
+      document.getElementById("serialInput").value = "";
+      document.getElementById("driverImage").value = "";
+      serialList = [];
+      updateSerialPreview();
     }
 
     async function loadEntries() {
@@ -77,38 +111,39 @@
       entryList.innerHTML = html || "لا توجد بيانات بعد.";
     }
 
-    function clearForm() {
-      document.getElementById("driverId").value = "";
-      document.getElementById("item").value = "";
-      document.getElementById("serial").value = "";
-      document.getElementById("driverImage").value = "";
-    }
-
     window.submitForm = submitForm;
-    window.addEventListener('DOMContentLoaded', loadEntries);
   </script>
 
   <style>
     body { font-family: 'Arial', sans-serif; background: #f3f3f3; padding: 20px; direction: rtl; }
-    input, select, button { padding: 10px; margin: 5px 0; width: 100%; }
+    input, select, button, textarea { padding: 10px; margin: 5px 0; width: 100%; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #4CAF50; color: white; cursor: pointer; }
     .entry { background: #fff; padding: 10px; margin: 10px 0; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+    .tag { display: inline-block; background: #d0eaff; padding: 5px 10px; margin: 3px; border-radius: 6px; color: #0073aa; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <h2>نموذج تسجيل الخروج من المخزن</h2>
+  <h2>خروج مواد من المخزن</h2>
 
   <input type="text" id="driverId" placeholder="رقم السائق (اختياري إذا أرفقت صورة)" />
   <input type="file" id="driverImage" accept="image/*" />
+
   <select id="item">
     <option value="">-- اختر المادة --</option>
     <option>Screen</option>
     <option>Router</option>
     <option>Cable</option>
+    <option>Power Adapter</option>
   </select>
-  <input type="text" id="serial" placeholder="رقم السيريال" />
+
+  <input type="text" id="serialInput" placeholder="أدخل رقم السيريال واضغط Enter" />
+  <div id="serialPreview"></div>
+
   <button onclick="submitForm()">إرسال</button>
 
+  <hr>
+  <h3>السجلات السابقة</h3>
   <div id="entryList"></div>
 
 </body>
