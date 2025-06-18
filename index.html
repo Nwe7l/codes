@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Serial Number Counter</title>
+  <title>Warehouse Dispatch Log</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
+      background: #f7f7f7;
       padding: 20px;
     }
     h1 {
@@ -20,6 +20,9 @@
       padding: 8px;
       margin: 5px;
     }
+    label {
+      font-weight: bold;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -27,13 +30,13 @@
       background: #fff;
     }
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #ccc;
       padding: 10px;
       text-align: center;
     }
     th {
       background-color: #333;
-      color: #fff;
+      color: white;
     }
     .controls {
       margin-top: 10px;
@@ -41,97 +44,105 @@
   </style>
 </head>
 <body>
-  <h1>Inventory Serial Number Tracker</h1>
+
+  <h1>Warehouse Dispatch Tracker</h1>
 
   <div class="form-group">
-    <input type="text" id="serial" placeholder="Serial Number" />
-    <input type="text" id="item" placeholder="Item Name" />
-    <input type="text" id="category" placeholder="Category (e.g., Screen)" />
+    <label for="driverId">Driver ID:</label>
+    <input type="text" id="driverId" placeholder="Enter driver ID" />
+  </div>
+
+  <div class="form-group">
+    <label for="itemName">Item Name:</label>
+    <input type="text" id="itemName" placeholder="e.g., Screen" />
+    <label for="serialNumber">Serial Number:</label>
+    <input type="text" id="serialNumber" placeholder="e.g., SN123456" />
     <button onclick="addItem()">Add Item</button>
   </div>
 
   <div class="controls">
     <strong>Total Items: <span id="itemCount">0</span></strong>
     <button onclick="downloadCSV()">Download CSV</button>
-    <button onclick="clearItems()">Clear All</button>
+    <button onclick="clearData()">Clear All</button>
   </div>
 
-  <table id="itemTable">
+  <table id="logTable">
     <thead>
       <tr>
         <th>#</th>
+        <th>Driver ID</th>
+        <th>Item Name</th>
         <th>Serial Number</th>
-        <th>Item</th>
-        <th>Category</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <script>
-    let items = [];
+    let data = [];
 
     function addItem() {
-      const serial = document.getElementById("serial").value.trim();
-      const item = document.getElementById("item").value.trim();
-      const category = document.getElementById("category").value.trim();
+      const driverId = document.getElementById("driverId").value.trim();
+      const itemName = document.getElementById("itemName").value.trim();
+      const serialNumber = document.getElementById("serialNumber").value.trim();
 
-      if (!serial || !item || !category) {
-        alert("Please fill all fields.");
+      if (!driverId || !itemName || !serialNumber) {
+        alert("Please fill in all fields.");
         return;
       }
 
-      items.push({ serial, item, category });
-      document.getElementById("serial").value = "";
-      document.getElementById("item").value = "";
-      document.getElementById("category").value = "";
+      data.push({ driverId, itemName, serialNumber });
+
+      document.getElementById("itemName").value = "";
+      document.getElementById("serialNumber").value = "";
 
       updateTable();
     }
 
     function updateTable() {
-      const tbody = document.querySelector("#itemTable tbody");
+      const tbody = document.querySelector("#logTable tbody");
       tbody.innerHTML = "";
 
-      items.forEach((entry, index) => {
+      data.forEach((entry, index) => {
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${index + 1}</td>
-          <td>${entry.serial}</td>
-          <td>${entry.item}</td>
-          <td>${entry.category}</td>
+          <td>${entry.driverId}</td>
+          <td>${entry.itemName}</td>
+          <td>${entry.serialNumber}</td>
         `;
         tbody.appendChild(row);
       });
 
-      document.getElementById("itemCount").textContent = items.length;
+      document.getElementById("itemCount").textContent = data.length;
     }
 
-    function clearItems() {
-      if (confirm("Are you sure you want to clear all items?")) {
-        items = [];
+    function clearData() {
+      if (confirm("Are you sure you want to clear all data?")) {
+        data = [];
         updateTable();
       }
     }
 
     function downloadCSV() {
-      if (items.length === 0) {
+      if (data.length === 0) {
         alert("No data to download.");
         return;
       }
 
-      let csv = "Serial Number,Item,Category\n";
-      items.forEach(entry => {
-        csv += `${entry.serial},${entry.item},${entry.category}\n`;
+      let csv = "Driver ID,Item Name,Serial Number\n";
+      data.forEach(entry => {
+        csv += `${entry.driverId},${entry.itemName},${entry.serialNumber}\n`;
       });
 
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "inventory.csv";
+      a.download = "warehouse_dispatch.csv";
       a.click();
     }
   </script>
+
 </body>
 </html>
