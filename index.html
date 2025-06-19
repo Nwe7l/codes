@@ -11,6 +11,8 @@
       padding: 20px;
       background: #f9f9f9;
       position: relative;
+      /* الافتراضي محاذاة النص يمين */
+      text-align: right;
     }
 
     label, select, input, button {
@@ -139,7 +141,8 @@
       previousEntries: "السجلات السابقة:",
       submit: "إرسال",
       toggleText: "English",
-      dir: "rtl"
+      dir: "rtl",
+      textAlign: "right"
     },
     en: {
       title: "Warehouse Dispatch Form",
@@ -151,13 +154,16 @@
       previousEntries: "Previous Records:",
       submit: "Submit",
       toggleText: "عربي",
-      dir: "ltr"
+      dir: "ltr",
+      textAlign: "left"
     }
   };
 
   function setLang(lang) {
     const t = langStrings[lang];
     document.body.dir = t.dir;
+    document.body.style.textAlign = t.textAlign;
+
     document.getElementById('title').textContent = t.title;
     document.getElementById('labelDriver').textContent = t.driverLabel;
     document.getElementById('labelItem').textContent = t.itemLabel;
@@ -174,7 +180,7 @@
     setLang(currentLang);
   });
 
-  setLang('ar'); // اللغة الابتدائية
+  setLang('ar'); // بداية اللغة العربية
 </script>
 
 </body>
