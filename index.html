@@ -85,10 +85,9 @@
 <label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
 <input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
-<!-- ✅ تمت إضافة هذا الجزء -->
+<!-- ✅ تمت الإضافة -->
 <label for="driverImage">أو قم برفع صورة السائق:</label>
 <input type="file" id="driverImage" accept="image/*" />
-<!-- ✅ نهاية الإضافة -->
 
 <label for="itemSelect" id="labelItem">اختر الصنف:</label>
 <select id="itemSelect">
@@ -116,7 +115,6 @@
 <div id="previousEntries">جاري التحميل...</div>
 
 <script type="module">
-// Firebase إعدادات
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import {
   getFirestore,
@@ -130,11 +128,18 @@ import {
   doc
 } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
   authDomain: "code-64718.firebaseapp.com",
   projectId: "code-64718",
-  storageBucket: "code-64718.firebasestorage.app",
+  storageBucket: "code-64718.appspot.com",
   messagingSenderId: "976088837146",
   appId: "1:976088837146:web:755a0643e01d2d45d175a3",
   measurementId: "G-XFE7T9Q87M"
@@ -142,16 +147,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// DOM elements
 const driverInput = document.getElementById('driverId');
 const itemSelect = document.getElementById('itemSelect');
 const serialInput = document.getElementById('serialInput');
-const accumulatedItemsDiv = document.getElementById('accumulatedItems');
 const submitBtn = document.getElementById('submitBtn');
+const accumulatedItemsDiv = document.getElementById('accumulatedItems');
 const previousEntriesDiv = document.getElementById('previousEntries');
 
-// Language toggle
 const langToggle = document.getElementById('langToggle');
 let currentLang = 'ar';
 
@@ -217,7 +221,6 @@ langToggle.addEventListener('click', () => {
   setLang(currentLang);
 });
 
-// Temporary entry storage
 const entries = {};
 
 function updateDisplay() {
@@ -260,25 +263,38 @@ serialInput.addEventListener('keydown', e => {
 submitBtn.addEventListener('click', async () => {
   const t = langStrings[currentLang];
   const driver = driverInput.value.trim();
+  const driverImageFile = document.getElementById('driverImage').files[0];
+  let imageUrl = "";
+
   if (!driver) {
     alert(t.alertDriver);
     return;
   }
+
   if (Object.keys(entries).length === 0) {
     alert(t.alertEmpty);
     return;
   }
 
   try {
+    if (driverImageFile) {
+      const imageRef = ref(storage, `driverImages/${Date.now()}_${driverImageFile.name}`);
+      const snapshot = await uploadBytes(imageRef, driverImageFile);
+      imageUrl = await getDownloadURL(snapshot.ref);
+    }
+
     await addDoc(collection(db, "warehouseEntries"), {
       driver,
+      imageUrl,
       items: entries,
       createdAt: serverTimestamp()
     });
+
     alert(t.alertSaved);
     driverInput.value = '';
     itemSelect.value = '';
     serialInput.value = '';
+    document.getElementById('driverImage').value = '';
     for (const key in entries) delete entries[key];
     updateDisplay();
   } catch (error) {
@@ -305,13 +321,16 @@ function renderEntries(docs) {
     entryDiv.className = "entry-box";
     let entryText = `${t.previousEntries} — ${formatDate(data.createdAt)}\n`;
     entryText += `${t.driverLabel} ${data.driver}\n`;
+    if (data.imageUrl) {
+      entryText += `📷 <a href="${data.imageUrl}" target="_blank">عرض صورة السائق</a>\n`;
+    }
     entryText += `${t.addedItems}\n`;
     for (const [item, serials] of Object.entries(data.items)) {
       entryText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
     }
 
     const pre = document.createElement('pre');
-    pre.textContent = entryText.trim();
+    pre.innerHTML = entryText.trim();
     entryDiv.appendChild(pre);
 
     const delIcon = document.createElement('img');
