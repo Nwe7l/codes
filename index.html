@@ -43,32 +43,9 @@
       margin-bottom: 20px;
     }
 
-    .entry-box {
-      background: #f0f0f0;
-      border: 1px solid #ddd;
-      padding: 10px 40px 10px 10px;
-      margin-bottom: 10px;
-      white-space: normal;
-      position: relative;
-      border-radius: 4px;
+    h3 {
+      margin-top: 30px;
     }
-
-    .delete-icon {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 20px;
-      height: 20px;
-      cursor: pointer;
-      opacity: 0.7;
-      transition: opacity 0.3s ease;
-    }
-
-    .delete-icon:hover {
-      opacity: 1;
-    }
-
-    h3 { margin-top: 30px; }
 
     #langToggle {
       float: right;
@@ -161,6 +138,13 @@
     document.body.dir = t.dir;
     document.body.style.textAlign = t.textAlign;
 
+    // Align all inputs and selects
+    const allFields = document.querySelectorAll('input, select, textarea');
+    allFields.forEach(el => {
+      el.style.direction = t.dir;
+      el.style.textAlign = t.textAlign;
+    });
+
     document.getElementById('title').innerText = t.title;
     document.getElementById('labelDriver').innerText = t.driverLabel;
     document.getElementById('driverId').placeholder = t.driverPlaceholder;
@@ -189,7 +173,7 @@
     setLang(currentLang);
   });
 
-  setLang('ar'); // Set default language to Arabic
+  setLang('ar'); // default language
 </script>
 
 </body>
