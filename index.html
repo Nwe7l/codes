@@ -9,6 +9,7 @@
       font-family: 'Segoe UI', sans-serif;
       padding: 20px;
       background-color: #f9f9f9;
+      direction: rtl;
     }
     .header {
       display: flex;
@@ -22,7 +23,7 @@
     }
     #logoImg {
       height: 50px;
-      margin-right: 10px;
+      margin-inline-end: 10px;
     }
     textarea {
       width: 100%;
@@ -32,6 +33,23 @@
     }
     .form-section {
       margin-bottom: 20px;
+    }
+    label, input, select, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -57,12 +75,12 @@
       <option value="Cable">Cable</option>
       <option value="Battery">Battery</option>
     </select>
-    <input type="text" id="serialInput" placeholder="Serial Number">
-    <button onclick="addSerial()">Add</button>
+    <input type="text" id="serialInput" placeholder="رقم السيريال">
+    <button onclick="addSerial()" id="addBtn">إضافة</button>
   </div>
 
   <div id="serialList"></div>
-  <button onclick="submitEntry()">إرسال</button>
+  <button onclick="submitEntry()" id="submitBtn">إرسال</button>
   <h3 id="recordsTitle">السجلات السابقة</h3>
   <div id="entries">جاري التحميل...</div>
 
@@ -80,6 +98,54 @@
     const db = firebase.firestore();
 
     let serialData = [];
+
+    const labels = {
+      ar: {
+        title: "تسجيل سحب أصناف من المخزن",
+        driverIdLabel: "رقم السائق أو ارفع الصورة:",
+        itemLabel: "اختر الصنف:",
+        serialPlaceholder: "رقم السيريال",
+        add: "إضافة",
+        submit: "إرسال",
+        records: "السجلات السابقة",
+        loading: "جاري التحميل...",
+        lang: "English",
+        dir: "rtl"
+      },
+      en: {
+        title: "Warehouse Dispatch Form",
+        driverIdLabel: "Driver ID or Upload Image:",
+        itemLabel: "Select Item:",
+        serialPlaceholder: "Serial Number",
+        add: "Add",
+        submit: "Submit",
+        records: "Previous Records",
+        loading: "Loading...",
+        lang: "العربية",
+        dir: "ltr"
+      }
+    };
+
+    let currentLang = 'ar';
+
+    function switchLang() {
+      currentLang = currentLang === 'ar' ? 'en' : 'ar';
+      const l = labels[currentLang];
+      document.documentElement.lang = currentLang;
+      document.body.style.direction = l.dir;
+      document.getElementById('title').textContent = l.title;
+      document.getElementById('driverIdLabel').textContent = l.driverIdLabel;
+      document.getElementById('itemLabel').textContent = l.itemLabel;
+      document.getElementById('serialInput').placeholder = l.serialPlaceholder;
+      document.getElementById('addBtn').textContent = l.add;
+      document.getElementById('submitBtn').textContent = l.submit;
+      document.getElementById('recordsTitle').textContent = l.records;
+      document.getElementById('entries').textContent = l.loading;
+      document.getElementById('langToggle').textContent = l.lang;
+      loadEntries();
+    }
+
+    document.getElementById('langToggle').addEventListener('click', switchLang);
 
     function addSerial() {
       const item = document.getElementById("itemSelect").value;
@@ -100,7 +166,7 @@
 
       let displayText = "";
       for (const item in grouped) {
-        displayText += `- ${item} — السيريال: ${grouped[item].join(" ")}\n`;
+        displayText += `- ${item} — Serial: ${grouped[item].join(" ")}\n`;
       }
 
       document.getElementById("serialList").innerText = displayText;
@@ -108,7 +174,7 @@
 
     function submitEntry() {
       const driverId = document.getElementById("driverId").value || "Image Uploaded";
-      const now = new Date().toLocaleString();
+      const now = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
 
       let grouped = {};
       serialData.forEach(({ item, serial }) => {
@@ -118,10 +184,10 @@
 
       let details = "";
       for (const item in grouped) {
-        details += `- ${item} — السيريال: ${grouped[item].join(" ")}\n`;
+        details += `- ${item} — Serial: ${grouped[item].join(" ")}\n`;
       }
 
-      const record = `التاريخ: ${now}\nالسائق: ${driverId}\nالأصناف:\n${details}`;
+      const record = `${currentLang === 'ar' ? 'التاريخ' : 'Date'}: ${now}\n${currentLang === 'ar' ? 'السائق' : 'Driver'}: ${driverId}\n${currentLang === 'ar' ? 'الأصناف' : 'Items'}:\n${details}`;
       db.collection("warehouseEntries").add({ timestamp: now, entry: record }).then(loadEntries);
       serialData = [];
       document.getElementById("serialList").innerText = "";
@@ -133,7 +199,7 @@
       db.collection("warehouseEntries").orderBy("timestamp", "desc").get().then(snapshot => {
         snapshot.forEach(doc => {
           const p = document.createElement("pre");
-          p.style.textAlign = document.documentElement.lang === "en" ? "left" : "right";
+          p.style.textAlign = currentLang === 'ar' ? "right" : "left";
           p.textContent = doc.data().entry;
           entriesDiv.appendChild(p);
         });
@@ -141,20 +207,6 @@
     }
 
     loadEntries();
-
-    // Language toggle
-    const langToggle = document.getElementById("langToggle");
-    langToggle.onclick = () => {
-      const isArabic = document.documentElement.lang === "ar";
-      document.documentElement.lang = isArabic ? "en" : "ar";
-      document.body.style.direction = isArabic ? "ltr" : "rtl";
-      document.getElementById("title").textContent = isArabic ? "Warehouse Dispatch Form" : "تسجيل سحب أصناف من المخزن";
-      document.getElementById("driverIdLabel").textContent = isArabic ? "Driver ID or Upload Image:" : "رقم السائق أو ارفع الصورة:";
-      document.getElementById("itemLabel").textContent = isArabic ? "Select Item:" : "اختر الصنف:";
-      document.getElementById("recordsTitle").textContent = isArabic ? "Previous Records" : "السجلات السابقة";
-      langToggle.textContent = isArabic ? "العربية" : "English";
-      loadEntries();
-    };
   </script>
 </body>
 </html>
