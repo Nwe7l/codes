@@ -73,7 +73,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
   <script>
-    // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
       authDomain: "code-64718.firebaseapp.com",
@@ -82,7 +81,6 @@
       messagingSenderId: "976088837146",
       appId: "1:976088837146:web:755a0643e01d2d45d175a3"
     };
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
   </script>
 </head>
@@ -113,202 +111,15 @@
 <h3 id="previousEntriesTitle">السجلات السابقة:</h3>
 <div id="previousEntries">جاري التحميل...</div>
 
+<script type="module" src="/warehouse.js"></script>
 <script type="module">
-  const langToggle = document.getElementById('langToggle');
-  const langText = document.getElementById('langText');
-  let currentLang = 'ar';
-
-  const langStrings = {
-    ar: {
-      title: "تسجيل سحب أصناف من المخزن",
-      driverLabel: "رقم السائق أو اسمه:",
-      driverPlaceholder: "أدخل رقم السائق أو اسمه",
-      itemLabel: "اختر الصنف:",
-      itemOptions: ["-- اختر صنف --", "شاشة", "كيبل", "راوتر", "لوحة مفاتيح"],
-      serialLabel: "أدخل رقم السيريال واضغط Enter:",
-      serialPlaceholder: "أدخل رقم السيريال هنا",
-      addedItems: "الأصناف المضافة:",
-      previousEntries: "السجلات السابقة:",
-      submit: "إرسال",
-      toggleText: "English",
-      dir: "rtl",
-      textAlign: "right"
-    },
-    en: {
-      title: "Warehouse Dispatch Form",
-      driverLabel: "Driver Name or ID:",
-      driverPlaceholder: "Enter Driver Name or ID",
-      itemLabel: "Select Item:",
-      itemOptions: ["-- Select Item --", "Screen", "Cable", "Router", "Keyboard"],
-      serialLabel: "Enter Serial and press Enter:",
-      serialPlaceholder: "Enter Serial Number Here",
-      addedItems: "Added Items:",
-      previousEntries: "Previous Records:",
-      submit: "Submit",
-      toggleText: "عربي",
-      dir: "ltr",
-      textAlign: "left"
-    }
-  };
-
-  function setLang(lang) {
-    const t = langStrings[lang];
-    document.body.dir = t.dir;
-    document.body.style.textAlign = t.textAlign;
-
-    // Align all inputs and selects
-    const allFields = document.querySelectorAll('input, select, textarea');
-    allFields.forEach(el => {
-      el.style.direction = t.dir;
-      el.style.textAlign = t.textAlign;
-    });
-
-    document.getElementById('title').innerText = t.title;
-    document.getElementById('labelDriver').innerText = t.driverLabel;
-    document.getElementById('driverId').placeholder = t.driverPlaceholder;
-
-    document.getElementById('labelItem').innerText = t.itemLabel;
-    const itemSelect = document.getElementById('itemSelect');
-    itemSelect.innerHTML = '';
-    t.itemOptions.forEach((text, index) => {
-      const option = document.createElement('option');
-      option.value = index === 0 ? '' : text;
-      option.text = text;
-      itemSelect.appendChild(option);
-    });
-
-    document.getElementById('labelSerial').innerText = t.serialLabel;
-    document.getElementById('serialInput').placeholder = t.serialPlaceholder;
-
-    document.getElementById('addedItemsTitle').innerText = t.addedItems;
-    document.getElementById('previousEntriesTitle').innerText = t.previousEntries;
-    document.getElementById('submitBtn').innerText = t.submit;
-    langText.innerText = t.toggleText;
-  }
-
-  langToggle.addEventListener('click', () => {
-    currentLang = currentLang === 'ar' ? 'en' : 'ar';
-    setLang(currentLang);
-  });
-
-  setLang('ar'); // default language
-
-  // --- Serial input and accumulation logic ---
-
-  const serialInput = document.getElementById('serialInput');
-  const itemSelect = document.getElementById('itemSelect');
-  const accumulatedItemsDiv = document.getElementById('accumulatedItems');
-  const previousEntriesDiv = document.getElementById('previousEntries');
-  const driverInput = document.getElementById('driverId');
-  const submitBtn = document.getElementById('submitBtn');
-
-  // Store items as array of objects: { item: string, serial: string }
-  let accumulatedItems = [];
-
-  function updateAccumulatedDisplay() {
-    if(accumulatedItems.length === 0) {
-      accumulatedItemsDiv.innerText = currentLang === 'ar' ? '(لا توجد بيانات بعد)' : '(No data yet)';
-      return;
-    }
-    // Group by item type
-    const grouped = {};
-    accumulatedItems.forEach(({ item, serial }) => {
-      if (!grouped[item]) grouped[item] = [];
-      grouped[item].push(`<${serial}>`);
-    });
-
-    let displayText = '';
-    for (const item in grouped) {
-      displayText += `- ${item} — ${currentLang === 'ar' ? 'السيريال' : 'Serial'}: ${grouped[item].join(' ')}\n`;
-    }
-    accumulatedItemsDiv.innerText = displayText;
-  }
-
-  // On pressing Enter in serial input
-  serialInput.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') {
+  // Extra feature: Allow Enter to trigger submit if not typing serial
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id !== 'serialInput') {
       e.preventDefault();
-      const serial = serialInput.value.trim();
-      const item = itemSelect.value;
-      if(serial && item) {
-        accumulatedItems.push({ item, serial });
-        updateAccumulatedDisplay();
-        serialInput.value = '';
-      } else {
-        alert(currentLang === 'ar' ? 'يرجى اختيار الصنف وإدخال رقم السيريال' : 'Please select an item and enter serial number');
-      }
+      document.getElementById('submitBtn').click();
     }
   });
-
-  // Submit accumulated items
-  submitBtn.addEventListener('click', () => {
-    const driver = driverInput.value.trim();
-    if(!driver) {
-      alert(currentLang === 'ar' ? 'يرجى إدخال رقم أو اسم السائق' : 'Please enter driver name or ID');
-      return;
-    }
-    if(accumulatedItems.length === 0) {
-      alert(currentLang === 'ar' ? 'لا توجد أصناف مضافة للإرسال' : 'No items added to submit');
-      return;
-    }
-
-    // Format the record text
-    const now = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
-    let grouped = {};
-    accumulatedItems.forEach(({ item, serial }) => {
-      if(!grouped[item]) grouped[item] = [];
-      grouped[item].push(`<${serial}>`);
-    });
-
-    let details = '';
-    for (const item in grouped) {
-      details += `- ${item} — ${currentLang === 'ar' ? 'السيريال' : 'Serial'}: ${grouped[item].join(' ')}\n`;
-    }
-
-    const recordText = `${currentLang === 'ar' ? 'التاريخ' : 'Date'}: ${now}\n${currentLang === 'ar' ? 'السائق' : 'Driver'}: ${driver}\n${currentLang === 'ar' ? 'الأصناف' : 'Items'}:\n${details}`;
-
-    // Save to Firebase Firestore
-    const db = firebase.firestore();
-    db.collection("warehouseEntries").add({ timestamp: now, entry: recordText })
-      .then(() => {
-        alert(currentLang === 'ar' ? 'تم الإرسال بنجاح' : 'Submitted successfully');
-        accumulatedItems = [];
-        updateAccumulatedDisplay();
-        loadPreviousEntries();
-      })
-      .catch(err => {
-        alert(currentLang === 'ar' ? 'حدث خطأ أثناء الإرسال' : 'Error while submitting');
-        console.error(err);
-      });
-  });
-
-  // Function to load previous entries from Firestore
-  function loadPreviousEntries() {
-    const db = firebase.firestore();
-    previousEntriesDiv.innerText = currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...';
-    db.collection("warehouseEntries").orderBy("timestamp", "desc").get()
-      .then(snapshot => {
-        if(snapshot.empty) {
-          previousEntriesDiv.innerText = currentLang === 'ar' ? 'لا توجد سجلات بعد' : 'No records yet';
-          return;
-        }
-        previousEntriesDiv.innerText = '';
-        snapshot.forEach(doc => {
-          const pre = document.createElement('pre');
-          pre.style.textAlign = currentLang === 'ar' ? 'right' : 'left';
-          pre.textContent = doc.data().entry;
-          previousEntriesDiv.appendChild(pre);
-        });
-      })
-      .catch(err => {
-        previousEntriesDiv.innerText = currentLang === 'ar' ? 'خطأ في تحميل السجلات' : 'Error loading records';
-        console.error(err);
-      });
-  }
-
-  loadPreviousEntries();
-
 </script>
-
 </body>
 </html>
