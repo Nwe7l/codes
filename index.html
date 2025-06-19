@@ -82,11 +82,18 @@
     #langToggle:hover {
       background: #218838;
     }
+
+    #langToggle img {
+      height: 24px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
 
-<button id="langToggle">English</button>
+<button id="langToggle">
+  <img src="https://img.icons8.com/color/28/language.png" alt="Toggle Language" />
+</button>
 
 <h2 id="title">تسجيل سحب أصناف من المخزن</h2>
 
@@ -209,7 +216,6 @@ function setLang(lang) {
   document.getElementById('addedItemsTitle').textContent = t.addedItems;
   document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
   document.getElementById('submitBtn').textContent = t.submit;
-  langToggle.textContent = t.toggleText;
   updateDisplay(); // refresh display if labels changed
 }
 
