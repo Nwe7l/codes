@@ -67,6 +67,24 @@
       background: #e0e0e0;
     }
   </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
+      authDomain: "code-64718.firebaseapp.com",
+      projectId: "code-64718",
+      storageBucket: "code-64718.appspot.com",
+      messagingSenderId: "976088837146",
+      appId: "1:976088837146:web:755a0643e01d2d45d175a3"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body>
 
@@ -249,51 +267,43 @@
 
     const recordText = `${currentLang === 'ar' ? 'التاريخ' : 'Date'}: ${now}\n${currentLang === 'ar' ? 'السائق' : 'Driver'}: ${driver}\n${currentLang === 'ar' ? 'الأصناف' : 'Items'}:\n${details}`;
 
-    // Save to Firebase Firestore (you'll need to add your firebase config and initialize firebase)
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-      const db = firebase.firestore();
-      db.collection("warehouseEntries").add({ timestamp: now, entry: recordText })
-        .then(() => {
-          alert(currentLang === 'ar' ? 'تم الإرسال بنجاح' : 'Submitted successfully');
-          accumulatedItems = [];
-          updateAccumulatedDisplay();
-          loadPreviousEntries();
-        })
-        .catch(err => {
-          alert(currentLang === 'ar' ? 'حدث خطأ أثناء الإرسال' : 'Error while submitting');
-          console.error(err);
-        });
-    } else {
-      alert(currentLang === 'ar' ? 'Firebase غير مهيأ' : 'Firebase not initialized');
-    }
+    // Save to Firebase Firestore
+    const db = firebase.firestore();
+    db.collection("warehouseEntries").add({ timestamp: now, entry: recordText })
+      .then(() => {
+        alert(currentLang === 'ar' ? 'تم الإرسال بنجاح' : 'Submitted successfully');
+        accumulatedItems = [];
+        updateAccumulatedDisplay();
+        loadPreviousEntries();
+      })
+      .catch(err => {
+        alert(currentLang === 'ar' ? 'حدث خطأ أثناء الإرسال' : 'Error while submitting');
+        console.error(err);
+      });
   });
 
   // Function to load previous entries from Firestore
   function loadPreviousEntries() {
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-      const db = firebase.firestore();
-      previousEntriesDiv.innerText = currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...';
-      db.collection("warehouseEntries").orderBy("timestamp", "desc").get()
-        .then(snapshot => {
-          if(snapshot.empty) {
-            previousEntriesDiv.innerText = currentLang === 'ar' ? 'لا توجد سجلات بعد' : 'No records yet';
-            return;
-          }
-          previousEntriesDiv.innerText = '';
-          snapshot.forEach(doc => {
-            const pre = document.createElement('pre');
-            pre.style.textAlign = currentLang === 'ar' ? 'right' : 'left';
-            pre.textContent = doc.data().entry;
-            previousEntriesDiv.appendChild(pre);
-          });
-        })
-        .catch(err => {
-          previousEntriesDiv.innerText = currentLang === 'ar' ? 'خطأ في تحميل السجلات' : 'Error loading records';
-          console.error(err);
+    const db = firebase.firestore();
+    previousEntriesDiv.innerText = currentLang === 'ar' ? 'جاري التحميل...' : 'Loading...';
+    db.collection("warehouseEntries").orderBy("timestamp", "desc").get()
+      .then(snapshot => {
+        if(snapshot.empty) {
+          previousEntriesDiv.innerText = currentLang === 'ar' ? 'لا توجد سجلات بعد' : 'No records yet';
+          return;
+        }
+        previousEntriesDiv.innerText = '';
+        snapshot.forEach(doc => {
+          const pre = document.createElement('pre');
+          pre.style.textAlign = currentLang === 'ar' ? 'right' : 'left';
+          pre.textContent = doc.data().entry;
+          previousEntriesDiv.appendChild(pre);
         });
-    } else {
-      previousEntriesDiv.innerText = currentLang === 'ar' ? 'Firebase غير مهيأ' : 'Firebase not initialized';
-    }
+      })
+      .catch(err => {
+        previousEntriesDiv.innerText = currentLang === 'ar' ? 'خطأ في تحميل السجلات' : 'Error loading records';
+        console.error(err);
+      });
   }
 
   loadPreviousEntries();
