@@ -1,40 +1,18 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Warehouse Dispatch Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Warehouse Dispatch Form</title>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      padding: 20px;
-      background-color: #f9f9f9;
+      font-family: Arial, sans-serif;
       direction: rtl;
+      padding: 20px;
+      background: #f9f9f9;
     }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-    .logo-container {
-      display: flex;
-      align-items: center;
-    }
-    #logoImg {
-      height: 50px;
-      margin-inline-end: 10px;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-      margin-top: 10px;
-      white-space: pre-wrap;
-    }
-    .form-section {
-      margin-bottom: 20px;
-    }
-    label, input, select, button {
+
+    label, select, input, button {
       display: block;
       width: 100%;
       margin-bottom: 10px;
@@ -42,171 +20,329 @@
       padding: 8px;
       box-sizing: border-box;
     }
-    button {
+
+    button#submitBtn {
       background: #007bff;
-      color: white;
+      color: #fff;
       border: none;
       cursor: pointer;
     }
-    button:hover {
+
+    button#submitBtn:hover {
       background: #0056b3;
     }
+
+    #accumulatedItems, #previousEntries {
+      white-space: pre-wrap;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px;
+      min-height: 80px;
+      margin-bottom: 20px;
+    }
+
+    .entry-box {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      padding: 10px 40px 10px 10px;
+      margin-bottom: 10px;
+      white-space: normal;
+      position: relative;
+      border-radius: 4px;
+    }
+
+    .delete-icon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+
+    .delete-icon:hover {
+      opacity: 1;
+    }
+
+    h3 { margin-top: 30px; }
+
+    #langToggle {
+      float: left;
+      margin-bottom: 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    #langToggle:hover {
+      background: #218838;
+    }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <div class="header">
-    <div class="logo-container">
-      <img src="logo.png" alt="Logo" id="logoImg">
-      <h2 id="title">تسجيل سحب أصناف من المخزن</h2>
-    </div>
-    <button id="langToggle">English</button>
-  </div>
 
-  <div class="form-section">
-    <label id="driverIdLabel">رقم السائق أو ارفع الصورة:</label>
-    <input type="text" id="driverId" placeholder="رقم السائق">
-    <input type="file" id="driverIdImage">
+<button id="langToggle">English</button>
 
-    <label id="itemLabel">اختر الصنف:</label>
-    <select id="itemSelect">
-      <option value="Screen">Screen</option>
-      <option value="Cable">Cable</option>
-      <option value="Battery">Battery</option>
-    </select>
-    <input type="text" id="serialInput" placeholder="رقم السيريال">
-    <button onclick="addSerial()" id="addBtn">إضافة</button>
-  </div>
+<h2 id="title">تسجيل سحب أصناف من المخزن</h2>
 
-  <div id="serialList"></div>
-  <button onclick="submitEntry()" id="submitBtn">إرسال</button>
-  <h3 id="recordsTitle">السجلات السابقة</h3>
-  <div id="entries">جاري التحميل...</div>
+<label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
+<input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
-      authDomain: "code-64718.firebaseapp.com",
-      projectId: "code-64718",
-      storageBucket: "code-64718.appspot.com",
-      messagingSenderId: "976088837146",
-      appId: "1:976088837146:web:755a0643e01d2d45d175a3",
-      measurementId: "G-XFE7T9Q87M"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+<label for="itemSelect" id="labelItem">اختر الصنف:</label>
+<select id="itemSelect">
+  <option value="">-- اختر صنف --</option>
+  <option value="Screen">Screen</option>
+  <option value="Cable">Cable</option>
+  <option value="Router">Router</option>
+  <option value="Keyboard">Keyboard</option>
+</select>
 
-    let serialData = [];
+<label for="serialInput" id="labelSerial">أدخل رقم السيريال واضغط Enter:</label>
+<input type="text" id="serialInput" placeholder="أدخل رقم السيريال هنا" />
 
-    const labels = {
-      ar: {
-        title: "تسجيل سحب أصناف من المخزن",
-        driverIdLabel: "رقم السائق أو ارفع الصورة:",
-        itemLabel: "اختر الصنف:",
-        serialPlaceholder: "رقم السيريال",
-        add: "إضافة",
-        submit: "إرسال",
-        records: "السجلات السابقة",
-        loading: "جاري التحميل...",
-        lang: "English",
-        dir: "rtl"
-      },
-      en: {
-        title: "Warehouse Dispatch Form",
-        driverIdLabel: "Driver ID or Upload Image:",
-        itemLabel: "Select Item:",
-        serialPlaceholder: "Serial Number",
-        add: "Add",
-        submit: "Submit",
-        records: "Previous Records",
-        loading: "Loading...",
-        lang: "العربية",
-        dir: "ltr"
+<h3 id="addedItemsTitle">الأصناف المضافة:</h3>
+<div id="accumulatedItems">(لا توجد بيانات بعد)</div>
+
+<button id="submitBtn">إرسال</button>
+
+<h3 id="previousEntriesTitle">السجلات السابقة:</h3>
+<div id="previousEntries">جاري التحميل...</div>
+
+<script type="module">
+// Firebase إعدادات
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
+  authDomain: "code-64718.firebaseapp.com",
+  projectId: "code-64718",
+  storageBucket: "code-64718.firebasestorage.app",
+  messagingSenderId: "976088837146",
+  appId: "1:976088837146:web:755a0643e01d2d45d175a3",
+  measurementId: "G-XFE7T9Q87M"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// DOM elements
+const driverInput = document.getElementById('driverId');
+const itemSelect = document.getElementById('itemSelect');
+const serialInput = document.getElementById('serialInput');
+const accumulatedItemsDiv = document.getElementById('accumulatedItems');
+const submitBtn = document.getElementById('submitBtn');
+const previousEntriesDiv = document.getElementById('previousEntries');
+
+// Language toggle
+const langToggle = document.getElementById('langToggle');
+let currentLang = 'ar';
+
+const langStrings = {
+  ar: {
+    title: "تسجيل سحب أصناف من المخزن",
+    driverLabel: "رقم السائق أو اسمه:",
+    itemLabel: "اختر الصنف:",
+    serialLabel: "أدخل رقم السيريال واضغط Enter:",
+    serialPlaceholder: "أدخل رقم السيريال هنا",
+    addedItems: "الأصناف المضافة:",
+    previousEntries: "السجلات السابقة:",
+    noData: "(لا توجد بيانات بعد)",
+    loading: "جاري التحميل...",
+    submit: "إرسال",
+    deleteConfirm: "هل أنت متأكد أنك تريد حذف هذا السجل؟",
+    deleteError: "خطأ أثناء الحذف: ",
+    deleteSuccess: "تم حذف السجل.",
+    alertDriver: "يرجى إدخال رقم أو اسم السائق",
+    alertItem: "يرجى اختيار صنف أولاً",
+    alertSerial: "يرجى إدخال رقم السيريال",
+    alertEmpty: "يرجى إدخال صنف واحد على الأقل مع رقم/أرقام السيريال",
+    alertSaved: "تم الحفظ!",
+    toggleText: "English"
+  },
+  en: {
+    title: "Warehouse Dispatch Form",
+    driverLabel: "Driver Name or ID:",
+    itemLabel: "Select Item:",
+    serialLabel: "Enter Serial and press Enter:",
+    serialPlaceholder: "Enter Serial Number Here",
+    addedItems: "Added Items:",
+    previousEntries: "Previous Records:",
+    noData: "(No data yet)",
+    loading: "Loading...",
+    submit: "Submit",
+    deleteConfirm: "Are you sure you want to delete this record?",
+    deleteError: "Error deleting: ",
+    deleteSuccess: "Record deleted.",
+    alertDriver: "Please enter driver name or ID",
+    alertItem: "Please select an item first",
+    alertSerial: "Please enter a serial number",
+    alertEmpty: "Please enter at least one item and serial",
+    alertSaved: "Saved successfully!",
+    toggleText: "عربي"
+  }
+};
+
+function setLang(lang) {
+  const t = langStrings[lang];
+  document.body.dir = (lang === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('labelDriver').textContent = t.driverLabel;
+  document.getElementById('labelItem').textContent = t.itemLabel;
+  document.getElementById('labelSerial').textContent = t.serialLabel;
+  document.getElementById('serialInput').placeholder = t.serialPlaceholder;
+  document.getElementById('addedItemsTitle').textContent = t.addedItems;
+  document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
+  document.getElementById('submitBtn').textContent = t.submit;
+  langToggle.textContent = t.toggleText;
+  updateDisplay(); // refresh display if labels changed
+}
+
+langToggle.addEventListener('click', () => {
+  currentLang = (currentLang === 'ar') ? 'en' : 'ar';
+  setLang(currentLang);
+});
+
+// Temporary entry storage
+const entries = {};
+
+function updateDisplay() {
+  const t = langStrings[currentLang];
+  if (Object.keys(entries).length === 0) {
+    accumulatedItemsDiv.textContent = t.noData;
+    return;
+  }
+  let displayText = "";
+  for (const [item, serials] of Object.entries(entries)) {
+    displayText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+  }
+  accumulatedItemsDiv.textContent = displayText.trim();
+}
+
+serialInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = itemSelect.value.trim();
+    const serial = serialInput.value.trim();
+    if (!item) {
+      alert(langStrings[currentLang].alertItem);
+      return;
+    }
+    if (!serial) {
+      alert(langStrings[currentLang].alertSerial);
+      return;
+    }
+    if (!entries[item]) {
+      entries[item] = [];
+    }
+    if (!entries[item].includes(serial)) {
+      entries[item].push(serial);
+      updateDisplay();
+    }
+    serialInput.value = '';
+  }
+});
+
+submitBtn.addEventListener('click', async () => {
+  const t = langStrings[currentLang];
+  const driver = driverInput.value.trim();
+  if (!driver) {
+    alert(t.alertDriver);
+    return;
+  }
+  if (Object.keys(entries).length === 0) {
+    alert(t.alertEmpty);
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "warehouseEntries"), {
+      driver,
+      items: entries,
+      createdAt: serverTimestamp()
+    });
+    alert(t.alertSaved);
+    driverInput.value = '';
+    itemSelect.value = '';
+    serialInput.value = '';
+    for (const key in entries) delete entries[key];
+    updateDisplay();
+  } catch (error) {
+    alert("Error: " + error.message);
+  }
+});
+
+function formatDate(timestamp) {
+  if (!timestamp) return "";
+  const d = timestamp.toDate();
+  return d.toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
+}
+
+function renderEntries(docs) {
+  const t = langStrings[currentLang];
+  if (docs.length === 0) {
+    previousEntriesDiv.textContent = t.loading;
+    return;
+  }
+  previousEntriesDiv.innerHTML = "";
+  docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const entryDiv = document.createElement('div');
+    entryDiv.className = "entry-box";
+    let entryText = `${t.previousEntries} — ${formatDate(data.createdAt)}\n`;
+    entryText += `${t.driverLabel} ${data.driver}\n`;
+    entryText += `${t.addedItems}\n`;
+    for (const [item, serials] of Object.entries(data.items)) {
+      entryText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+    }
+
+    const pre = document.createElement('pre');
+    pre.textContent = entryText.trim();
+    entryDiv.appendChild(pre);
+
+    const delIcon = document.createElement('img');
+    delIcon.src = "https://img.icons8.com/material-rounded/24/ff0000/trash.png";
+    delIcon.alt = "Delete";
+    delIcon.title = "Delete Record";
+    delIcon.className = "delete-icon";
+    delIcon.addEventListener('click', async () => {
+      if (confirm(t.deleteConfirm)) {
+        try {
+          await deleteDoc(doc(db, "warehouseEntries", docSnap.id));
+          alert(t.deleteSuccess);
+        } catch (err) {
+          alert(t.deleteError + err.message);
+        }
       }
-    };
+    });
 
-    let currentLang = 'ar';
+    entryDiv.appendChild(delIcon);
+    previousEntriesDiv.appendChild(entryDiv);
+  });
+}
 
-    function switchLang() {
-      currentLang = currentLang === 'ar' ? 'en' : 'ar';
-      const l = labels[currentLang];
-      document.documentElement.lang = currentLang;
-      document.body.style.direction = l.dir;
-      document.getElementById('title').textContent = l.title;
-      document.getElementById('driverIdLabel').textContent = l.driverIdLabel;
-      document.getElementById('itemLabel').textContent = l.itemLabel;
-      document.getElementById('serialInput').placeholder = l.serialPlaceholder;
-      document.getElementById('addBtn').textContent = l.add;
-      document.getElementById('submitBtn').textContent = l.submit;
-      document.getElementById('recordsTitle').textContent = l.records;
-      document.getElementById('entries').textContent = l.loading;
-      document.getElementById('langToggle').textContent = l.lang;
-      loadEntries();
-    }
+const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
+onSnapshot(q, (querySnapshot) => {
+  renderEntries(querySnapshot.docs);
+});
 
-    document.getElementById('langToggle').addEventListener('click', switchLang);
-
-    function addSerial() {
-      const item = document.getElementById("itemSelect").value;
-      const serial = document.getElementById("serialInput").value;
-      if (serial.trim() !== "") {
-        serialData.push({ item, serial });
-        displaySerialList();
-        document.getElementById("serialInput").value = "";
-      }
-    }
-
-    function displaySerialList() {
-      const grouped = {};
-      serialData.forEach(({ item, serial }) => {
-        if (!grouped[item]) grouped[item] = [];
-        grouped[item].push(`<${serial}>`);
-      });
-
-      let displayText = "";
-      for (const item in grouped) {
-        displayText += `- ${item} — Serial: ${grouped[item].join(" ")}\n`;
-      }
-
-      document.getElementById("serialList").innerText = displayText;
-    }
-
-    function submitEntry() {
-      const driverId = document.getElementById("driverId").value || "Image Uploaded";
-      const now = new Date().toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
-
-      let grouped = {};
-      serialData.forEach(({ item, serial }) => {
-        if (!grouped[item]) grouped[item] = [];
-        grouped[item].push(`<${serial}>`);
-      });
-
-      let details = "";
-      for (const item in grouped) {
-        details += `- ${item} — Serial: ${grouped[item].join(" ")}\n`;
-      }
-
-      const record = `${currentLang === 'ar' ? 'التاريخ' : 'Date'}: ${now}\n${currentLang === 'ar' ? 'السائق' : 'Driver'}: ${driverId}\n${currentLang === 'ar' ? 'الأصناف' : 'Items'}:\n${details}`;
-      db.collection("warehouseEntries").add({ timestamp: now, entry: record }).then(loadEntries);
-      serialData = [];
-      document.getElementById("serialList").innerText = "";
-    }
-
-    function loadEntries() {
-      const entriesDiv = document.getElementById("entries");
-      entriesDiv.innerHTML = "";
-      db.collection("warehouseEntries").orderBy("timestamp", "desc").get().then(snapshot => {
-        snapshot.forEach(doc => {
-          const p = document.createElement("pre");
-          p.style.textAlign = currentLang === 'ar' ? "right" : "left";
-          p.textContent = doc.data().entry;
-          entriesDiv.appendChild(p);
-        });
-      });
-    }
-
-    loadEntries();
-  </script>
+// Set initial language
+setLang('ar');
+</script>
 </body>
 </html>
