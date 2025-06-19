@@ -85,6 +85,11 @@
 <label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
 <input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
+<!-- ✅ تمت إضافة هذا الجزء -->
+<label for="driverImage">أو قم برفع صورة السائق:</label>
+<input type="file" id="driverImage" accept="image/*" />
+<!-- ✅ نهاية الإضافة -->
+
 <label for="itemSelect" id="labelItem">اختر الصنف:</label>
 <select id="itemSelect">
   <option value="">-- اختر صنف --</option>
@@ -204,7 +209,7 @@ function setLang(lang) {
   document.getElementById('addedItemsTitle').textContent = t.addedItems;
   document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
   document.getElementById('submitBtn').textContent = t.submit;
-  updateDisplay(); // refresh display if labels changed
+  updateDisplay();
 }
 
 langToggle.addEventListener('click', () => {
@@ -335,7 +340,6 @@ onSnapshot(q, (querySnapshot) => {
   renderEntries(querySnapshot.docs);
 });
 
-// Set initial language
 setLang('ar');
 </script>
 </body>
