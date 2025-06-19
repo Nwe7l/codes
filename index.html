@@ -11,7 +11,6 @@
       padding: 20px;
       background: #f9f9f9;
       position: relative;
-      /* الافتراضي محاذاة النص يمين */
       text-align: right;
     }
 
@@ -103,19 +102,13 @@
 <h2 id="title">تسجيل سحب أصناف من المخزن</h2>
 
 <label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
-<input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
+<input type="text" id="driverId" />
 
 <label for="itemSelect" id="labelItem">اختر الصنف:</label>
-<select id="itemSelect">
-  <option value="">-- اختر صنف --</option>
-  <option value="Screen">Screen</option>
-  <option value="Cable">Cable</option>
-  <option value="Router">Router</option>
-  <option value="Keyboard">Keyboard</option>
-</select>
+<select id="itemSelect"></select>
 
 <label for="serialInput" id="labelSerial">أدخل رقم السيريال واضغط Enter:</label>
-<input type="text" id="serialInput" placeholder="أدخل رقم السيريال هنا" />
+<input type="text" id="serialInput" />
 
 <h3 id="addedItemsTitle">الأصناف المضافة:</h3>
 <div id="accumulatedItems">(لا توجد بيانات بعد)</div>
@@ -134,7 +127,9 @@
     ar: {
       title: "تسجيل سحب أصناف من المخزن",
       driverLabel: "رقم السائق أو اسمه:",
+      driverPlaceholder: "أدخل رقم السائق أو اسمه",
       itemLabel: "اختر الصنف:",
+      itemOptions: ["-- اختر صنف --", "شاشة", "كيبل", "راوتر", "لوحة مفاتيح"],
       serialLabel: "أدخل رقم السيريال واضغط Enter:",
       serialPlaceholder: "أدخل رقم السيريال هنا",
       addedItems: "الأصناف المضافة:",
@@ -147,7 +142,9 @@
     en: {
       title: "Warehouse Dispatch Form",
       driverLabel: "Driver Name or ID:",
+      driverPlaceholder: "Enter Driver Name or ID",
       itemLabel: "Select Item:",
+      itemOptions: ["-- Select Item --", "Screen", "Cable", "Router", "Keyboard"],
       serialLabel: "Enter Serial and press Enter:",
       serialPlaceholder: "Enter Serial Number Here",
       addedItems: "Added Items:",
@@ -166,17 +163,25 @@
 
     document.getElementById('title').innerText = t.title;
     document.getElementById('labelDriver').innerText = t.driverLabel;
+    document.getElementById('driverId').placeholder = t.driverPlaceholder;
+
     document.getElementById('labelItem').innerText = t.itemLabel;
+    const itemSelect = document.getElementById('itemSelect');
+    itemSelect.innerHTML = '';
+    t.itemOptions.forEach((text, index) => {
+      const option = document.createElement('option');
+      option.value = index === 0 ? '' : text;
+      option.text = text;
+      itemSelect.appendChild(option);
+    });
+
     document.getElementById('labelSerial').innerText = t.serialLabel;
     document.getElementById('serialInput').placeholder = t.serialPlaceholder;
+
     document.getElementById('addedItemsTitle').innerText = t.addedItems;
     document.getElementById('previousEntriesTitle').innerText = t.previousEntries;
     document.getElementById('submitBtn').innerText = t.submit;
     langText.innerText = t.toggleText;
-
-    console.log('Language set to:', lang);
-    console.log('Driver label:', document.getElementById('labelDriver').innerText);
-    console.log('Item label:', document.getElementById('labelItem').innerText);
   }
 
   langToggle.addEventListener('click', () => {
@@ -184,7 +189,7 @@
     setLang(currentLang);
   });
 
-  setLang('ar'); // بداية اللغة العربية
+  setLang('ar'); // Set default language to Arabic
 </script>
 
 </body>
