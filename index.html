@@ -10,8 +10,6 @@
       direction: rtl;
       padding: 20px;
       background: #f9f9f9;
-      position: relative;
-      text-align: right;
     }
 
     label, select, input, button {
@@ -43,65 +41,69 @@
       margin-bottom: 20px;
     }
 
-    h3 {
-      margin-top: 30px;
+    .entry-box {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      padding: 10px 40px 10px 10px;
+      margin-bottom: 10px;
+      white-space: normal;
+      position: relative;
+      border-radius: 4px;
     }
 
-    #langToggle {
-      float: right;
-      background: #f0f0f0;
-      color: #333;
-      border: 1px solid #ccc;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.9rem;
+    .delete-icon {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 20px;
+      height: 20px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.3s ease;
-      margin-bottom: 15px;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+
+    .delete-icon:hover {
+      opacity: 1;
+    }
+
+    h3 { margin-top: 30px; }
+
+    #langToggle {
+      float: left;
+      margin-bottom: 20px;
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
     }
 
     #langToggle:hover {
-      background: #e0e0e0;
+      background: #218838;
     }
   </style>
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
-      authDomain: "code-64718.firebaseapp.com",
-      projectId: "code-64718",
-      storageBucket: "code-64718.appspot.com",
-      messagingSenderId: "976088837146",
-      appId: "1:976088837146:web:755a0643e01d2d45d175a3"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
 </head>
 <body>
 
-<div style="overflow: hidden;">
-  <button id="langToggle">
-    🌐 <span id="langText">English</span>
-  </button>
-</div>
+<button id="langToggle">English</button>
 
 <h2 id="title">تسجيل سحب أصناف من المخزن</h2>
 
 <label for="driverId" id="labelDriver">رقم السائق أو اسمه:</label>
-<input type="text" id="driverId" />
+<input type="text" id="driverId" placeholder="أدخل رقم السائق أو اسمه" />
 
 <label for="itemSelect" id="labelItem">اختر الصنف:</label>
-<select id="itemSelect"></select>
+<select id="itemSelect">
+  <option value="">-- اختر صنف --</option>
+  <option value="Screen">Screen</option>
+  <option value="Cable">Cable</option>
+  <option value="Router">Router</option>
+  <option value="Keyboard">Keyboard</option>
+</select>
 
 <label for="serialInput" id="labelSerial">أدخل رقم السيريال واضغط Enter:</label>
-<input type="text" id="serialInput" />
+<input type="text" id="serialInput" placeholder="أدخل رقم السيريال هنا" />
 
 <h3 id="addedItemsTitle">الأصناف المضافة:</h3>
 <div id="accumulatedItems">(لا توجد بيانات بعد)</div>
@@ -111,15 +113,236 @@
 <h3 id="previousEntriesTitle">السجلات السابقة:</h3>
 <div id="previousEntries">جاري التحميل...</div>
 
-<script type="module" src="/warehouse.js"></script>
 <script type="module">
-  // Extra feature: Allow Enter to trigger submit if not typing serial
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.activeElement.id !== 'serialInput') {
-      e.preventDefault();
-      document.getElementById('submitBtn').click();
+// Firebase إعدادات
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy,
+  onSnapshot,
+  deleteDoc,
+  doc
+} from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
+  authDomain: "code-64718.firebaseapp.com",
+  projectId: "code-64718",
+  storageBucket: "code-64718.firebasestorage.app",
+  messagingSenderId: "976088837146",
+  appId: "1:976088837146:web:755a0643e01d2d45d175a3",
+  measurementId: "G-XFE7T9Q87M"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// DOM elements
+const driverInput = document.getElementById('driverId');
+const itemSelect = document.getElementById('itemSelect');
+const serialInput = document.getElementById('serialInput');
+const accumulatedItemsDiv = document.getElementById('accumulatedItems');
+const submitBtn = document.getElementById('submitBtn');
+const previousEntriesDiv = document.getElementById('previousEntries');
+
+// Language toggle
+const langToggle = document.getElementById('langToggle');
+let currentLang = 'ar';
+
+const langStrings = {
+  ar: {
+    title: "تسجيل سحب أصناف من المخزن",
+    driverLabel: "رقم السائق أو اسمه:",
+    itemLabel: "اختر الصنف:",
+    serialLabel: "أدخل رقم السيريال واضغط Enter:",
+    serialPlaceholder: "أدخل رقم السيريال هنا",
+    addedItems: "الأصناف المضافة:",
+    previousEntries: "السجلات السابقة:",
+    noData: "(لا توجد بيانات بعد)",
+    loading: "جاري التحميل...",
+    submit: "إرسال",
+    deleteConfirm: "هل أنت متأكد أنك تريد حذف هذا السجل؟",
+    deleteError: "خطأ أثناء الحذف: ",
+    deleteSuccess: "تم حذف السجل.",
+    alertDriver: "يرجى إدخال رقم أو اسم السائق",
+    alertItem: "يرجى اختيار صنف أولاً",
+    alertSerial: "يرجى إدخال رقم السيريال",
+    alertEmpty: "يرجى إدخال صنف واحد على الأقل مع رقم/أرقام السيريال",
+    alertSaved: "تم الحفظ!",
+    toggleText: "English"
+  },
+  en: {
+    title: "Warehouse Dispatch Form",
+    driverLabel: "Driver Name or ID:",
+    itemLabel: "Select Item:",
+    serialLabel: "Enter Serial and press Enter:",
+    serialPlaceholder: "Enter Serial Number Here",
+    addedItems: "Added Items:",
+    previousEntries: "Previous Records:",
+    noData: "(No data yet)",
+    loading: "Loading...",
+    submit: "Submit",
+    deleteConfirm: "Are you sure you want to delete this record?",
+    deleteError: "Error deleting: ",
+    deleteSuccess: "Record deleted.",
+    alertDriver: "Please enter driver name or ID",
+    alertItem: "Please select an item first",
+    alertSerial: "Please enter a serial number",
+    alertEmpty: "Please enter at least one item and serial",
+    alertSaved: "Saved successfully!",
+    toggleText: "عربي"
+  }
+};
+
+function setLang(lang) {
+  const t = langStrings[lang];
+  document.body.dir = (lang === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('labelDriver').textContent = t.driverLabel;
+  document.getElementById('labelItem').textContent = t.itemLabel;
+  document.getElementById('labelSerial').textContent = t.serialLabel;
+  document.getElementById('serialInput').placeholder = t.serialPlaceholder;
+  document.getElementById('addedItemsTitle').textContent = t.addedItems;
+  document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
+  document.getElementById('submitBtn').textContent = t.submit;
+  langToggle.textContent = t.toggleText;
+  updateDisplay(); // refresh display if labels changed
+}
+
+langToggle.addEventListener('click', () => {
+  currentLang = (currentLang === 'ar') ? 'en' : 'ar';
+  setLang(currentLang);
+});
+
+// Temporary entry storage
+const entries = {};
+
+function updateDisplay() {
+  const t = langStrings[currentLang];
+  if (Object.keys(entries).length === 0) {
+    accumulatedItemsDiv.textContent = t.noData;
+    return;
+  }
+  let displayText = "";
+  for (const [item, serials] of Object.entries(entries)) {
+    displayText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+  }
+  accumulatedItemsDiv.textContent = displayText.trim();
+}
+
+serialInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = itemSelect.value.trim();
+    const serial = serialInput.value.trim();
+    if (!item) {
+      alert(langStrings[currentLang].alertItem);
+      return;
     }
+    if (!serial) {
+      alert(langStrings[currentLang].alertSerial);
+      return;
+    }
+    if (!entries[item]) {
+      entries[item] = [];
+    }
+    if (!entries[item].includes(serial)) {
+      entries[item].push(serial);
+      updateDisplay();
+    }
+    serialInput.value = '';
+  }
+});
+
+submitBtn.addEventListener('click', async () => {
+  const t = langStrings[currentLang];
+  const driver = driverInput.value.trim();
+  if (!driver) {
+    alert(t.alertDriver);
+    return;
+  }
+  if (Object.keys(entries).length === 0) {
+    alert(t.alertEmpty);
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "warehouseEntries"), {
+      driver,
+      items: entries,
+      createdAt: serverTimestamp()
+    });
+    alert(t.alertSaved);
+    driverInput.value = '';
+    itemSelect.value = '';
+    serialInput.value = '';
+    for (const key in entries) delete entries[key];
+    updateDisplay();
+  } catch (error) {
+    alert("Error: " + error.message);
+  }
+});
+
+function formatDate(timestamp) {
+  if (!timestamp) return "";
+  const d = timestamp.toDate();
+  return d.toLocaleString(currentLang === 'ar' ? 'ar-EG' : 'en-US');
+}
+
+function renderEntries(docs) {
+  const t = langStrings[currentLang];
+  if (docs.length === 0) {
+    previousEntriesDiv.textContent = t.loading;
+    return;
+  }
+  previousEntriesDiv.innerHTML = "";
+  docs.forEach(docSnap => {
+    const data = docSnap.data();
+    const entryDiv = document.createElement('div');
+    entryDiv.className = "entry-box";
+    let entryText = `${t.previousEntries} — ${formatDate(data.createdAt)}\n`;
+    entryText += `${t.driverLabel} ${data.driver}\n`;
+    entryText += `${t.addedItems}\n`;
+    for (const [item, serials] of Object.entries(data.items)) {
+      entryText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+    }
+
+    const pre = document.createElement('pre');
+    pre.textContent = entryText.trim();
+    entryDiv.appendChild(pre);
+
+    const delIcon = document.createElement('img');
+    delIcon.src = "https://img.icons8.com/material-rounded/24/ff0000/trash.png";
+    delIcon.alt = "Delete";
+    delIcon.title = "Delete Record";
+    delIcon.className = "delete-icon";
+    delIcon.addEventListener('click', async () => {
+      if (confirm(t.deleteConfirm)) {
+        try {
+          await deleteDoc(doc(db, "warehouseEntries", docSnap.id));
+          alert(t.deleteSuccess);
+        } catch (err) {
+          alert(t.deleteError + err.message);
+        }
+      }
+    });
+
+    entryDiv.appendChild(delIcon);
+    previousEntriesDiv.appendChild(entryDiv);
   });
+}
+
+const q = query(collection(db, "warehouseEntries"), orderBy("createdAt", "desc"));
+onSnapshot(q, (querySnapshot) => {
+  renderEntries(querySnapshot.docs);
+});
+
+// Set initial language
+setLang('ar');
 </script>
 </body>
 </html>
