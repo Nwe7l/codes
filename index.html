@@ -10,6 +10,7 @@
       direction: rtl;
       padding: 20px;
       background: #f9f9f9;
+      position: relative;
     }
 
     label, select, input, button {
@@ -69,18 +70,24 @@
     h3 { margin-top: 30px; }
 
     #langToggle {
-      float: left;
-      margin-bottom: 20px;
+      position: absolute;
+      top: 20px;
+      left: 20px;
       background: #28a745;
       color: white;
       border: none;
-      padding: 8px 12px;
+      padding: 10px 18px;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      font-weight: bold;
       cursor: pointer;
-      font-size: 0.9rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: background 0.3s ease, transform 0.2s ease;
     }
 
     #langToggle:hover {
       background: #218838;
+      transform: scale(1.05);
     }
   </style>
 </head>
@@ -114,7 +121,6 @@
 <div id="previousEntries">جاري التحميل...</div>
 
 <script type="module">
-// Firebase إعدادات
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
 import {
   getFirestore,
@@ -132,7 +138,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBJKet_uwrNKLRzJuZBNbgtJzSJ963vpmM",
   authDomain: "code-64718.firebaseapp.com",
   projectId: "code-64718",
-  storageBucket: "code-64718.firebasestorage.app",
+  storageBucket: "code-64718.appspot.com",
   messagingSenderId: "976088837146",
   appId: "1:976088837146:web:755a0643e01d2d45d175a3",
   measurementId: "G-XFE7T9Q87M"
@@ -141,16 +147,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// DOM elements
 const driverInput = document.getElementById('driverId');
 const itemSelect = document.getElementById('itemSelect');
 const serialInput = document.getElementById('serialInput');
 const accumulatedItemsDiv = document.getElementById('accumulatedItems');
 const submitBtn = document.getElementById('submitBtn');
 const previousEntriesDiv = document.getElementById('previousEntries');
-
-// Language toggle
 const langToggle = document.getElementById('langToggle');
+
 let currentLang = 'ar';
 
 const langStrings = {
@@ -210,7 +214,7 @@ function setLang(lang) {
   document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
   document.getElementById('submitBtn').textContent = t.submit;
   langToggle.textContent = t.toggleText;
-  updateDisplay(); // refresh display if labels changed
+  updateDisplay();
 }
 
 langToggle.addEventListener('click', () => {
@@ -218,7 +222,6 @@ langToggle.addEventListener('click', () => {
   setLang(currentLang);
 });
 
-// Temporary entry storage
 const entries = {};
 
 function updateDisplay() {
@@ -341,7 +344,6 @@ onSnapshot(q, (querySnapshot) => {
   renderEntries(querySnapshot.docs);
 });
 
-// Set initial language
 setLang('ar');
 </script>
 </body>
