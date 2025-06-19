@@ -164,15 +164,19 @@
     document.body.dir = t.dir;
     document.body.style.textAlign = t.textAlign;
 
-    document.getElementById('title').textContent = t.title;
-    document.getElementById('labelDriver').textContent = t.driverLabel;
-    document.getElementById('labelItem').textContent = t.itemLabel;
-    document.getElementById('labelSerial').textContent = t.serialLabel;
+    document.getElementById('title').innerText = t.title;
+    document.getElementById('labelDriver').innerText = t.driverLabel;
+    document.getElementById('labelItem').innerText = t.itemLabel;
+    document.getElementById('labelSerial').innerText = t.serialLabel;
     document.getElementById('serialInput').placeholder = t.serialPlaceholder;
-    document.getElementById('addedItemsTitle').textContent = t.addedItems;
-    document.getElementById('previousEntriesTitle').textContent = t.previousEntries;
-    document.getElementById('submitBtn').textContent = t.submit;
-    langText.textContent = t.toggleText;
+    document.getElementById('addedItemsTitle').innerText = t.addedItems;
+    document.getElementById('previousEntriesTitle').innerText = t.previousEntries;
+    document.getElementById('submitBtn').innerText = t.submit;
+    langText.innerText = t.toggleText;
+
+    console.log('Language set to:', lang);
+    console.log('Driver label:', document.getElementById('labelDriver').innerText);
+    console.log('Item label:', document.getElementById('labelItem').innerText);
   }
 
   langToggle.addEventListener('click', () => {
