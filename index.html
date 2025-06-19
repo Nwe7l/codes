@@ -113,7 +113,63 @@
 <h3 id="previousEntriesTitle">السجلات السابقة:</h3>
 <div id="previousEntries">جاري التحميل...</div>
 
-<!-- لاحقاً في السكربت سيتم تضمين دعم تخزين الصورة -->
+<script>
+const serialInput = document.getElementById('serialInput');
+const itemSelect = document.getElementById('itemSelect');
+const accumulatedItemsDiv = document.getElementById('accumulatedItems');
+
+const entries = {};
+const langStrings = {
+  ar: {
+    alertItem: "يرجى اختيار صنف أولاً",
+    alertSerial: "يرجى إدخال رقم السيريال",
+    noData: "(لا توجد بيانات بعد)"
+  },
+  en: {
+    alertItem: "Please select an item first",
+    alertSerial: "Please enter a serial number",
+    noData: "(No data yet)"
+  }
+};
+let currentLang = 'ar';
+
+function updateDisplay() {
+  const t = langStrings[currentLang];
+  if (Object.keys(entries).length === 0) {
+    accumulatedItemsDiv.textContent = t.noData;
+    return;
+  }
+  let displayText = "";
+  for (const [item, serials] of Object.entries(entries)) {
+    displayText += `- ${item} — Serial: ${serials.map(s => `<${s}>`).join(" ")}\n`;
+  }
+  accumulatedItemsDiv.textContent = displayText.trim();
+}
+
+serialInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = itemSelect.value.trim();
+    const serial = serialInput.value.trim();
+    if (!item) {
+      alert(langStrings[currentLang].alertItem);
+      return;
+    }
+    if (!serial) {
+      alert(langStrings[currentLang].alertSerial);
+      return;
+    }
+    if (!entries[item]) {
+      entries[item] = [];
+    }
+    if (!entries[item].includes(serial)) {
+      entries[item].push(serial);
+      updateDisplay();
+    }
+    serialInput.value = '';
+  }
+});
+</script>
 
 </body>
 </html>
